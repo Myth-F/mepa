@@ -1,0 +1,356 @@
+// MEPA — extensible learning platform schema.
+// Learner and staff identities are intentionally kept in separate tables, with
+// separate session tables, so a learner credential can never reach the authoring
+// surface. Authored content is stored as immutable published ModuleVersions whose
+// ordered ModuleBlocks carry a typed, schema-versioned JSONB payload.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity — learner
+// ---------------------------------------------------------------------------
+
+model Learner {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime  @default(now())
+  // Soft-delete / anonymization marker for account deletion (RGPD).
+  deletedAt    DateTime?
+
+  sessions    LearnerSession[]
+  completions ModuleCompletion[]
+  attempts    QuizAttempt[]
+  votes       DilemmaVote[]
+  pointEvents PointEvent[]
+  score       LearnerScore?
+
+  @@map("learner")
+}
+
+model LearnerSession {
+  id        String   @id @default(cuid())
+  learnerId String
+  // Session tokens are random and stored only as a hash.
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@map("learner_session")
+}
+
+// ---------------------------------------------------------------------------
+// Identity — staff (provisioned by an administrator; no public registration)
+// ---------------------------------------------------------------------------
+
+enum StaffRole {
+  ADMIN
+  EDITOR
+}
+
+model StaffUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         StaffRole @default(EDITOR)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  sessions       StaffSession[]
+  createdModules Module[]       @relation("ModuleCreatedBy")
+  uploadedMedia  MediaAsset[]   @relation("MediaUploadedBy")
+
+  @@map("staff_user")
+}
+
+model StaffSession {
+  id          String   @id @default(cuid())
+  staffUserId String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@index([staffUserId])
+  @@map("staff_session")
+}
+
+// ---------------------------------------------------------------------------
+// Authoring — modules, versions, blocks, sources
+// ---------------------------------------------------------------------------
+
+enum ModuleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PointEventKind {
+  MODULE_COMPLETED
+  QUIZ_PASSED
+  QUIZ_FIRST_TRY_BONUS
+  DILEMMA_VOTED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+// Discovery taxonomy. Categories are first-class records so they can power facet
+// pages and a sitemap; tags are denormalized per version for simple faceting.
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  versions ModuleVersion[]
+
+  @@map("category")
+}
+
+model Module {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  createdAt        DateTime @default(now())
+  createdByStaffId String?
+  // Editorial curation for the landing showcase (stable across versions).
+  featured         Boolean  @default(false)
+  featuredRank     Int?
+
+  createdBy      StaffUser?            @relation("ModuleCreatedBy", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  versions       ModuleVersion[]
+  searchDocument ModuleSearchDocument?
+
+  @@index([featured, featuredRank])
+  @@map("module")
+}
+
+model ModuleVersion {
+  id            String       @id @default(cuid())
+  moduleId      String
+  versionNumber Int
+  status        ModuleStatus @default(DRAFT)
+  title         String
+  summary       String       @default("")
+  publishedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Discovery classification carried by the immutable version snapshot.
+  categoryId       String?
+  level            CourseLevel?
+  estimatedMinutes Int?
+  language         String       @default("fr")
+  tags             String[]     @default([])
+
+  module      Module             @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  blocks      ModuleBlock[]
+  sources     ModuleSource[]
+  completions ModuleCompletion[]
+  attempts    QuizAttempt[]
+  votes       DilemmaVote[]
+  pointEvents PointEvent[]
+
+  @@unique([moduleId, versionNumber])
+  @@index([status])
+  @@index([categoryId])
+  @@map("module_version")
+}
+
+model ModuleBlock {
+  id              String @id @default(cuid())
+  moduleVersionId String
+  // Registered block type, e.g. "rich_text" | "image" | "quiz" | "dilemma".
+  type            String
+  // Schema version of the payload, so payloads can be migrated per block type.
+  schemaVersion   Int    @default(1)
+  position        Int
+  payload         Json
+
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+  attempts      QuizAttempt[]
+  votes         DilemmaVote[]
+
+  @@unique([moduleVersionId, position])
+  @@index([moduleVersionId])
+  @@map("module_block")
+}
+
+model ModuleSource {
+  id              String  @id @default(cuid())
+  moduleVersionId String
+  label           String
+  url             String?
+  citation        String?
+
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+
+  @@index([moduleVersionId])
+  @@map("module_source")
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+model MediaAsset {
+  id                String   @id @default(cuid())
+  // Server-generated object key inside the S3-compatible bucket.
+  objectKey         String   @unique
+  mimeType          String
+  sizeBytes         Int
+  // Alt text is required for meaningful images; decorative images set isDecorative.
+  altText           String?
+  isDecorative      Boolean  @default(false)
+  uploadedByStaffId String?
+  createdAt         DateTime @default(now())
+
+  uploadedBy StaffUser? @relation("MediaUploadedBy", fields: [uploadedByStaffId], references: [id], onDelete: SetNull)
+
+  @@map("media_asset")
+}
+
+// ---------------------------------------------------------------------------
+// Learning — progress, assessments, votes (recorded against a module version)
+// ---------------------------------------------------------------------------
+
+model ModuleCompletion {
+  id              String   @id @default(cuid())
+  learnerId       String
+  moduleVersionId String
+  completedAt     DateTime @default(now())
+
+  learner       Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, moduleVersionId])
+  @@map("module_completion")
+}
+
+model QuizAttempt {
+  id              String   @id @default(cuid())
+  learnerId       String
+  moduleVersionId String
+  blockId         String
+  score           Int
+  maxScore        Int
+  answers         Json
+  createdAt       DateTime @default(now())
+
+  learner       Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+  block         ModuleBlock   @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@index([moduleVersionId])
+  @@map("quiz_attempt")
+}
+
+model DilemmaVote {
+  id              String   @id @default(cuid())
+  learnerId       String
+  moduleVersionId String
+  blockId         String
+  // Chosen option key as defined by the dilemma block payload.
+  choice          String
+  createdAt       DateTime @default(now())
+
+  learner       Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+  block         ModuleBlock   @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  // One vote per learner per dilemma block (which is tied to a published version).
+  @@unique([learnerId, blockId])
+  @@map("dilemma_vote")
+}
+
+// ---------------------------------------------------------------------------
+// Gamification — explainable events and fast aggregate
+// ---------------------------------------------------------------------------
+
+model PointEvent {
+  id              String         @id @default(cuid())
+  learnerId       String
+  moduleVersionId String
+  kind            PointEventKind
+  sourceId        String
+  points          Int
+  ruleVersion     Int
+  createdAt       DateTime       @default(now())
+
+  learner       Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  moduleVersion ModuleVersion @relation(fields: [moduleVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, kind, sourceId])
+  @@index([learnerId, createdAt])
+  @@index([moduleVersionId])
+  @@map("point_event")
+}
+
+model LearnerScore {
+  learnerId        String   @id
+  totalPoints      Int      @default(0)
+  level            Int      @default(1)
+  firstReachedAt   DateTime @default(now())
+  leaderboardOptIn Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([leaderboardOptIn, totalPoints, firstReachedAt])
+  @@map("learner_score")
+}
+
+// ---------------------------------------------------------------------------
+// Discovery — denormalized search document (one row per module = current
+// published version). Built inside the publish transaction and removed when a
+// module has no published version. The catalogue, facets and search all read
+// from here. `searchVector` is a tsvector maintained by the search adapter and
+// indexed with GIN (created in the migration, not expressible in Prisma).
+// ---------------------------------------------------------------------------
+
+model ModuleSearchDocument {
+  moduleId         String       @id
+  slug             String       @unique
+  title            String
+  summary          String       @default("")
+  body             String       @default("")
+  categoryId       String?
+  categorySlug     String?
+  categoryName     String?
+  level            CourseLevel?
+  estimatedMinutes Int?
+  language         String       @default("fr")
+  tags             String[]     @default([])
+  popularity       Int          @default(0)
+  publishedAt      DateTime
+  searchVector     Unsupported("tsvector")?
+  updatedAt        DateTime     @updatedAt
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([publishedAt])
+  @@index([categoryId])
+  @@index([level])
+  @@index([popularity])
+  @@map("module_search_document")
+}

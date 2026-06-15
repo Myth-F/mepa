@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mepa
+          POSTGRES_PASSWORD: mepa
+          POSTGRES_DB: mepa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mepa -d mepa_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mepa:mepa@localhost:5432/mepa_test
+      # Non-secret placeholders so env validation passes during CI.
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: mepa-media
+      S3_ACCESS_KEY_ID: ci
+      S3_SECRET_ACCESS_KEY: ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Architecture boundary check
+        run: npm run arch:check
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Prisma migration validation
+        run: npx prisma migrate deploy
+      - name: Unit + integration tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -t mepa-app:ci .

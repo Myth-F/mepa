@@ -1,0 +1,8 @@
+.devdata
+.next
+node_modules
+src/generated
+coverage
+test-results
+playwright-report
+Context_folder

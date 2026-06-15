@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Product: public educational web platform about AI ethics, commissioned in a CNIL
+  and French Ministry of Education context. The MVP must be demonstrable on
+  29 June 2026.
+  Audience: general public, including users with limited digital confidence.
+  Tech stack: TypeScript, Next.js App Router, PostgreSQL, Prisma, Zod, S3-compatible
+  object storage, Docker Compose.
+  Architecture: modular monolith with learner and staff identities kept separate.
+  Educational modules are authored through a custom /admin interface and composed
+  from typed, reorderable, schema-versioned blocks.
+  AI: no active AI feature in the initial MVP. Provider-neutral contracts must allow
+  a contextual tutor to be integrated later without coupling domain logic to a vendor.
+  Design: follow DSFR usability and accessibility principles without using restricted
+  French State identity assets or claiming to be an official government service.
+  Accessibility target: RGAA 4.1.2-inspired acceptance checks.
+  Operations: the complete application must be deployable on a single VPS with
+  Docker Compose, persistent data, health checks, controlled migrations, backups,
+  and secrets supplied outside version control.
+
+rules:
+  proposal:
+    - Keep proposals concise and identify explicit non-goals.
+  specs:
+    - Every requirement must have observable acceptance scenarios.
+    - Include accessibility and failure behavior where relevant.
+  design:
+    - Record security, data persistence, deployment, and future AI boundaries.
+  tasks:
+    - Organize tasks into independently demonstrable increments.
+    - Include automated tests and Docker Compose deployment verification.
