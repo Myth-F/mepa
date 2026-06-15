@@ -68,11 +68,10 @@ uniquement après une migration Prisma réussie.
 
 1. Créer une ressource **Docker Compose** depuis ce dépôt et sélectionner
    `compose.yaml`.
-2. Renseigner au minimum `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID` et
-   `S3_SECRET_ACCESS_KEY` dans les variables d'environnement Coolify. Utiliser des
-   secrets forts compatibles avec une URL, par exemple générés avec
-   `openssl rand -hex 32`.
-3. Dans la variable générée `SERVICE_FQDN_APP_3000`, choisir le domaine public.
+2. Coolify génère et conserve automatiquement `SERVICE_PASSWORD_POSTGRES`,
+   `SERVICE_USER_MINIO` et `SERVICE_PASSWORD_MINIO`.
+3. Dans **Domains for app**, renseigner le domaine public, par exemple
+   `https://mepa.ipv6-sigl.fr`. Laisser les domaines des autres services vides.
 4. Déployer. Le service `migrate` doit terminer avec le code 0 avant le démarrage
    de `app`.
 

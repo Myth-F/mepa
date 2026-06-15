@@ -1,6 +1,6 @@
 # Production stack for Coolify. Coolify discovers the application through
-# SERVICE_FQDN_APP_3000 and terminates TLS through its proxy. Secrets are required
-# deployment variables and are never stored in this file.
+# SERVICE_FQDN_APP_3000 and terminates TLS through its proxy. Credentials are
+# generated and persisted by Coolify magic environment variables.
 name: mepa
 
 x-restart: &restart
@@ -19,7 +19,7 @@ services:
     <<: [*restart, *logging]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mepa}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       POSTGRES_DB: ${POSTGRES_DB:-mepa}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,8 +40,8 @@ services:
     <<: [*restart, *logging]
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?}
+      MINIO_ROOT_USER: ${SERVICE_USER_MINIO}
+      MINIO_ROOT_PASSWORD: ${SERVICE_PASSWORD_MINIO}
     volumes:
       - minio_data:/data
     networks:
@@ -66,7 +66,7 @@ services:
       - backend
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:?} ${S3_SECRET_ACCESS_KEY:?} &&
+      mc alias set local http://minio:9000 ${SERVICE_USER_MINIO} ${SERVICE_PASSWORD_MINIO} &&
       mc mb --ignore-existing local/${S3_BUCKET:-mepa-media} &&
       mc anonymous set none local/${S3_BUCKET:-mepa-media} &&
       echo 'Bucket ${S3_BUCKET:-mepa-media} initialized';
@@ -85,7 +85,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-mepa}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-mepa}
     networks:
       - backend
     command: ["npm", "run", "prisma:deploy"]
@@ -109,17 +109,17 @@ services:
         condition: service_completed_successfully
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-mepa}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-mepa}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
       S3_ENDPOINT: http://minio:9000
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-mepa-media}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+      S3_ACCESS_KEY_ID: ${SERVICE_USER_MINIO}
+      S3_SECRET_ACCESS_KEY: ${SERVICE_PASSWORD_MINIO}
       S3_FORCE_PATH_STYLE: "true"
       TUTOR_ENABLED: "false"
       # Coolify creates the public URL and proxies it to container port 3000.
-      SERVICE_FQDN_APP_3000:
+      SERVICE_FQDN_APP_3000: "/"
     networks:
       - backend
     deploy:
@@ -140,15 +140,15 @@ services:
         condition: service_completed_successfully
     environment:
       PGUSER: ${POSTGRES_USER:-mepa}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       PGDATABASE: ${POSTGRES_DB:-mepa}
       PGHOST: postgres
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-mepa-media}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+      S3_ACCESS_KEY_ID: ${SERVICE_USER_MINIO}
+      S3_SECRET_ACCESS_KEY: ${SERVICE_PASSWORD_MINIO}
     volumes:
       - backup_data:/backups
       - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
