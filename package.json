@@ -22,6 +22,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "staff:create": "tsx scripts/create-admin.ts",
+    "staff:upsert": "tsx scripts/upsert-staff.ts",
     "gamification:recompute": "tsx scripts/recompute-gamification.ts",
     "search:recompute": "tsx scripts/recompute-search.ts",
     "arch:check": "tsx scripts/arch-check.ts"

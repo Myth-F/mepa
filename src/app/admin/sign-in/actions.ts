@@ -11,7 +11,15 @@ export async function signInStaffAction(formData: FormData): Promise<void> {
     redirect("/admin/sign-in?error=missing");
   }
 
-  if (!(await createStaffSession(email, password))) {
+  let signedIn = false;
+  try {
+    signedIn = await createStaffSession(email, password);
+  } catch (error) {
+    console.error("Staff sign-in failed with an unexpected error", error);
+    redirect("/admin/sign-in?error=server");
+  }
+
+  if (!signedIn) {
     redirect("/admin/sign-in?error=invalid");
   }
 

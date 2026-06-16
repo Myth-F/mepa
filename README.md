@@ -51,6 +51,12 @@ Comptes de test :
 - Apprenants : `camille.apprenante@example.org`, `nour.apprenante@example.org`,
   `leo.apprenant@example.org` / `change-me-please`
 
+Pour créer ou réinitialiser un compte équipe de test :
+
+```bash
+npm run staff:upsert -- --email editor@example.org --name "Éditeur" --password 'change-me-please' --role EDITOR
+```
+
 L’espace équipe n’est jamais annoncé dans l’interface publique. Les membres de
 l’équipe se connectent directement sur `http://localhost:3000/admin/sign-in`; après
 authentification, le lien « Espace équipe » apparaît dans leur navigation.

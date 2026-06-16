@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Connexion équipe" };
 const ERROR_MESSAGES: Record<string, string> = {
   missing: "Renseignez votre adresse e-mail et votre mot de passe.",
   invalid: "L’adresse e-mail ou le mot de passe ne correspond pas à un compte équipe actif.",
+  server: "La connexion a échoué côté serveur. Réessayez ou vérifiez les journaux du déploiement.",
 };
 
 export default async function StaffSignInPage({
