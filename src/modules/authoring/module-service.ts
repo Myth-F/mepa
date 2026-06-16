@@ -200,6 +200,11 @@ export class ModuleService {
           status: "DRAFT",
           title: latest.title,
           summary: latest.summary,
+          categoryId: latest.categoryId,
+          level: latest.level,
+          estimatedMinutes: latest.estimatedMinutes,
+          language: latest.language,
+          tags: latest.tags,
           blocks: {
             create: latest.blocks.map((b) => ({
               type: b.type,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import type { Route } from "next";
 import { Breadcrumb } from "@/shared/ui/breadcrumb";
 import { requireStaff } from "@/shared/auth/staff-session";
 
@@ -29,9 +30,9 @@ export default async function AdminHomePage() {
               <h3>Créer ou modifier un module</h3>
               <p>Assemblez des textes, quiz, dilemmes et sources dans l’ordre souhaité.</p>
             </div>
-            <span className="text-link" aria-disabled="true">
-              Constructeur bientôt disponible
-            </span>
+            <Link className="text-link" href={"/admin/modules" as Route}>
+              Ouvrir l’éditeur
+            </Link>
           </article>
           <article className="action-item">
             <div>
