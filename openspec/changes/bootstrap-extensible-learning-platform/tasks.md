@@ -13,6 +13,7 @@
 - [x] 2.3 Implement module, version, and block domain models with transactional draft creation and immutable publication rules
 - [~] 2.4 Implement the versioned block registry with Zod schemas, learner renderers, admin editors, and text projections for initial block types (registry + Zod schemas + learner renderers + text projections done; admin editors pending — Group 3)
 - [ ] 2.5 Add unit and integration tests for identity isolation, block validation, publication transitions, and published-version immutability
+- [x] 2.6 Allow active staff accounts to sign into the public learner space through a separate learner session without granting staff access
 
 ## 3. Administration And Media
 
@@ -21,6 +22,7 @@
 - [~] 3.3 Implement the `MediaStoragePort`, MinIO adapter, signed upload flow, media validation, and alternative-text metadata (port + S3/MinIO adapter + validation + alt-text rules done; HTTP signed-upload route + MediaAsset persistence pending)
 - [ ] 3.4 Build learner-view preview, complete-draft validation, publication, and version-history screens
 - [ ] 3.5 Add Playwright coverage for staff access denial, module creation, invalid publication, valid publication, preview, and draft-only media protection
+- [ ] 3.6 Verify that module creation and editing never require repository changes: public pages must read only published database/search-document content, while seed content remains a non-runtime demo initializer
 
 ## 4. Learner Experience
 
@@ -46,6 +48,8 @@
 - [x] 6.4 Add `.env.example`, secret-generation guidance, reverse-proxy/TLS guidance, firewall expectations, image tagging, and deployment/rollback commands
 - [x] 6.5 Implement PostgreSQL dump and MinIO mirror backup jobs with retention, and document required off-host backup copying
 - [~] 6.6 Perform and document a clean Compose deployment test, container-recreation persistence test, failed-migration test, backup test, and full restore drill (procedures documented in README runbook; execution requires a Docker host — not run in this environment)
+- [x] 6.7 Split application liveness (`/api/health`, no dependency calls) from readiness (`/api/ready`, PostgreSQL check) so dependency slowness does not cause Docker/Coolify restart loops
+- [ ] 6.8 Validate Coolify deployment logs after rollout: app container remains running, `/api/health` returns 200, `/api/ready` returns 200, and proxy no longer reports recurring gateway timeouts
 
 ## 7. MVP Content And Release Verification
 

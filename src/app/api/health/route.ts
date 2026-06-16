@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/shared/db/prisma";
 
-// Liveness + readiness probe used by Docker Compose healthchecks and the VPS
-// reverse proxy. Returns 200 only when the database is reachable.
+// Liveness probe used by Docker/Coolify. It intentionally does not touch
+// PostgreSQL or object storage: dependency slowness should degrade readiness,
+// not trigger an application restart loop.
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return NextResponse.json({ status: "ok", db: "up" }, { status: 200 });
-  } catch {
-    return NextResponse.json({ status: "degraded", db: "down" }, { status: 503 });
-  }
+  return NextResponse.json({ status: "ok" }, { status: 200 });
 }

@@ -35,6 +35,8 @@ This minimizes deployment and coordination overhead while preserving boundaries 
 
 Each block type is registered with its Zod schema, admin editor, learner renderer, and text projection. This allows a new block type without changing the database schema while preventing arbitrary unvalidated JSON.
 
+Course content is runtime data, not application constants. Public pages read published modules from PostgreSQL and the denormalized search document. Demo seeds are allowed only as an environment initialization path and must use the same authoring domain services and database tables as real authoring; they must not sit in the request path or replace the staff authoring surface.
+
 ### Build a custom admin surface with separate staff identity
 
 The same Next.js deployment serves `/admin`, but staff use separate tables, session cookies, and authorization middleware from learners. Staff accounts are provisioned by an administrator; public staff registration is not available. Passwords use Argon2id and random session tokens are stored hashed.
@@ -77,6 +79,8 @@ Provide:
 - resource-conscious defaults, log rotation, restart policies, and image tags supplied through environment variables.
 
 Migrations do not run automatically in every application replica. The documented deployment sequence pulls/builds the image, runs the one-shot migration, starts services, and verifies health.
+
+Application health separates liveness from readiness. `/api/health` only confirms that the HTTP process can answer and is the Docker healthcheck target. `/api/ready` checks PostgreSQL connectivity for operator monitoring. This avoids Coolify/Docker restart loops when a dependency is temporarily slow while still making dependency failures observable.
 
 The Compose stack intentionally does not terminate TLS. The VPS operator connects Caddy, Traefik, Nginx, or a hosting control panel to the application's loopback-bound port and manages certificates there.
 

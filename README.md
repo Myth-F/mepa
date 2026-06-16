@@ -12,7 +12,7 @@ ni se présenter comme un service officiel.
 
 ```
 src/
-  app/                     Next.js App Router (pages, /api/health)
+  app/                     Next.js App Router (pages, /api/health, /api/ready)
   modules/
     identity/              crypto partagée (Argon2id, jetons de session)
     authoring/             domaine modules + registre de blocs typés
@@ -60,6 +60,10 @@ npm run staff:upsert -- --email editor@example.org --name "Éditeur" --password 
 L’espace équipe n’est jamais annoncé dans l’interface publique. Les membres de
 l’équipe se connectent directement sur `http://localhost:3000/admin/sign-in`; après
 authentification, le lien « Espace équipe » apparaît dans leur navigation.
+Un compte équipe actif peut aussi se connecter à l’espace personnel public depuis
+`/account/sign-in` avec les mêmes identifiants, afin de tester le parcours comme
+une personne apprenante. Cela crée ou réutilise une identité apprenante séparée
+pour la progression.
 
 L’espace équipe actuel authentifie les éditeurs, mais le constructeur visuel de
 modules n’est pas encore disponible dans l’interface. Pour ajouter rapidement des
@@ -111,8 +115,16 @@ l'application sur son port conteneur `3000`; TLS est géré par Coolify.
 
 ```bash
 curl -fsS https://votre-domaine.example/api/health
-# {"status":"ok","db":"up"}
+# {"status":"ok"}
+
+curl -fsS https://votre-domaine.example/api/ready
+# {"status":"ready","db":"up"}
 ```
+
+`/api/health` est une sonde de vie du process et ne touche pas PostgreSQL, afin
+d'éviter les boucles de redémarrage quand une dépendance est temporairement lente.
+`/api/ready` vérifie explicitement la connectivité base de données.
+Voir aussi l'[audit réseau et déploiement Coolify](docs/architecture/audit-reseau-deploiement-coolify.md).
 
 Si `migrate` échoue, Coolify ne démarre pas `app`. Corriger la migration
 (rétrocompatible, expand-and-contract), puis relancer le déploiement.

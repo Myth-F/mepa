@@ -55,13 +55,37 @@ async function setLearnerSession(learnerId: string): Promise<void> {
 }
 
 export async function signInLearner(email: string, password: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
   const learner = await prisma.learner.findUnique({
-    where: { email: email.trim().toLowerCase() },
+    where: { email: normalizedEmail },
   });
-  if (!learner || learner.deletedAt || !(await verifyPassword(learner.passwordHash, password))) {
+
+  if (learner && !learner.deletedAt && (await verifyPassword(learner.passwordHash, password))) {
+    await setLearnerSession(learner.id);
+    return true;
+  }
+
+  const staff = await prisma.staffUser.findUnique({
+    where: { email: normalizedEmail },
+  });
+  if (!staff || !staff.active || !(await verifyPassword(staff.passwordHash, password))) {
     return false;
   }
-  await setLearnerSession(learner.id);
+
+  const staffLearner = await prisma.learner.upsert({
+    where: { email: normalizedEmail },
+    update: {
+      displayName: staff.name,
+      passwordHash: staff.passwordHash,
+      deletedAt: null,
+    },
+    create: {
+      email: normalizedEmail,
+      displayName: staff.name,
+      passwordHash: staff.passwordHash,
+    },
+  });
+  await setLearnerSession(staffLearner.id);
   return true;
 }
 

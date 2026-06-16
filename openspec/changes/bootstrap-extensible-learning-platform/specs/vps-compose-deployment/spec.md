@@ -52,12 +52,22 @@ The system SHALL obtain production credentials and cryptographic secrets from op
 
 ### Requirement: Services expose operational health
 
-The system SHALL define health checks for the application, PostgreSQL, and object storage and SHALL configure dependent services to wait for healthy prerequisites.
+The system SHALL define health checks for the application, PostgreSQL, and object storage and SHALL distinguish application liveness from dependency readiness.
 
-#### Scenario: Database is unavailable
+#### Scenario: Application process is alive
 
-- **WHEN** PostgreSQL is unhealthy during startup
-- **THEN** the application is not reported healthy and the failure is visible to the operator
+- **WHEN** the application HTTP process can accept local requests
+- **THEN** `/api/health` returns 200 without querying PostgreSQL, object storage, or external services
+
+#### Scenario: Application dependencies are checked
+
+- **WHEN** an operator or deployment monitor requests `/api/ready`
+- **THEN** the system verifies PostgreSQL connectivity and returns 200 only when required runtime dependencies are reachable
+
+#### Scenario: Database is temporarily unavailable after startup
+
+- **WHEN** PostgreSQL is temporarily slow or unavailable after the application process has started
+- **THEN** readiness reports degradation, but Docker liveness does not restart the application solely because of the dependency failure
 
 ### Requirement: Backups and restore are documented and testable
 
@@ -67,3 +77,12 @@ The system SHALL create scheduled PostgreSQL and object-storage backups with con
 
 - **WHEN** an operator follows the restore procedure using a retained backup
 - **THEN** the restored environment contains the expected database records and media objects
+
+### Requirement: Optional demo data does not gate runtime startup
+
+The system SHALL keep migrations and optional demo seeding outside the long-running application process and SHALL NOT make the public application depend on successful demo seeding.
+
+#### Scenario: Demo seed fails
+
+- **WHEN** optional demo seeding exits unsuccessfully in a test environment
+- **THEN** the application startup path remains controlled by migration success and runtime dependencies, and the seed failure is visible as an operator action rather than a public proxy timeout
