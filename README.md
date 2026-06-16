@@ -38,13 +38,27 @@ cp .env.example .env            # renseigner les valeurs locales
 docker compose -f docker-compose.dev.yaml up -d   # PostgreSQL + MinIO + bucket
 npm install
 npx prisma migrate dev          # crée la base et applique les migrations
-npm run db:seed                 # module d'exemple publié
+npm run db:seed                 # jeu de démonstration publié
 npm run dev                     # http://localhost:3000
 ```
+
+La seed crée un jeu de démonstration relançable : catégories, modules publiés,
+sources, comptes apprenants, progression et classement.
+
+Comptes de test :
+
+- Équipe : `editor@example.org` / `change-me-please`
+- Apprenants : `camille.apprenante@example.org`, `nour.apprenante@example.org`,
+  `leo.apprenant@example.org` / `change-me-please`
 
 L’espace équipe n’est jamais annoncé dans l’interface publique. Les membres de
 l’équipe se connectent directement sur `http://localhost:3000/admin/sign-in`; après
 authentification, le lien « Espace équipe » apparaît dans leur navigation.
+
+L’espace équipe actuel authentifie les éditeurs, mais le constructeur visuel de
+modules n’est pas encore disponible dans l’interface. Pour ajouter rapidement des
+cours de test aujourd’hui, modifier [`prisma/seed.ts`](prisma/seed.ts) ou créer un
+script qui utilise `ModuleService`.
 
 Qualité :
 
@@ -72,8 +86,11 @@ uniquement après une migration Prisma réussie.
    `SERVICE_USER_MINIO` et `SERVICE_PASSWORD_MINIO`.
 3. Dans **Domains for app**, renseigner le domaine public, par exemple
    `https://mepa.ipv6-sigl.fr`. Laisser les domaines des autres services vides.
-4. Déployer. Le service `migrate` doit terminer avec le code 0 avant le démarrage
-   de `app`.
+4. Pour un déploiement de tests utilisateurs, laisser `DEMO_SEED_ENABLED=true`
+   (valeur par défaut). Pour un déploiement avec du vrai contenu, définir
+   `DEMO_SEED_ENABLED=false`.
+5. Déployer. Les services `migrate` puis `demo-seed` doivent terminer avec le code
+   0 avant le démarrage de `app`.
 
 PostgreSQL et MinIO ne publient aucun port. Le proxy Coolify accède uniquement à
 l'application sur son port conteneur `3000`; TLS est géré par Coolify.
