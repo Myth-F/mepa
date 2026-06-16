@@ -91,35 +91,6 @@ services:
     command: ["npm", "run", "prisma:deploy"]
     restart: "no"
 
-  # Optional idempotent data set for closed online user tests.
-  # Set DEMO_SEED_ENABLED=false before deploying real production content.
-  demo-seed:
-    image: ${APP_IMAGE:-mepa-app}-migrate:${APP_TAG:-latest}
-    build:
-      context: .
-      target: migrator
-      args:
-        NODE_VERSION: ${NODE_VERSION:-22.14.0-bookworm-slim}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-mepa}
-    networks:
-      - backend
-    command:
-      - /bin/sh
-      - -c
-      - |
-        if [ "${DEMO_SEED_ENABLED:-true}" = "true" ]; then
-          npm run db:seed
-        else
-          echo "Demo seed disabled"
-        fi
-    restart: "no"
-
   app:
     image: ${APP_IMAGE:-mepa-app}:${APP_TAG:-latest}
     build:
@@ -135,8 +106,6 @@ services:
       minio-init:
         condition: service_completed_successfully
       migrate:
-        condition: service_completed_successfully
-      demo-seed:
         condition: service_completed_successfully
     environment:
       NODE_ENV: production

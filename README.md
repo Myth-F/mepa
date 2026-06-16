@@ -86,11 +86,17 @@ uniquement après une migration Prisma réussie.
    `SERVICE_USER_MINIO` et `SERVICE_PASSWORD_MINIO`.
 3. Dans **Domains for app**, renseigner le domaine public, par exemple
    `https://mepa.ipv6-sigl.fr`. Laisser les domaines des autres services vides.
-4. Pour un déploiement de tests utilisateurs, laisser `DEMO_SEED_ENABLED=true`
-   (valeur par défaut). Pour un déploiement avec du vrai contenu, définir
-   `DEMO_SEED_ENABLED=false`.
-5. Déployer. Les services `migrate` puis `demo-seed` doivent terminer avec le code
-   0 avant le démarrage de `app`.
+4. Déployer. Le service `migrate` doit terminer avec le code 0 avant le démarrage
+   de `app`.
+5. Pour remplir un déploiement de tests utilisateurs, lancer ensuite la seed
+   depuis un shell sur le VPS avec l'environnement de la stack :
+
+   ```bash
+   docker compose run --rm migrate npm run db:seed
+   ```
+
+   La seed est relançable et ne doit pas être automatisée comme dépendance de
+   démarrage de `app`, afin d'éviter de bloquer le proxy public si elle échoue.
 
 PostgreSQL et MinIO ne publient aucun port. Le proxy Coolify accède uniquement à
 l'application sur son port conteneur `3000`; TLS est géré par Coolify.
