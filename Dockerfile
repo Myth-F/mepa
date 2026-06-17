@@ -4,6 +4,14 @@
 ARG NODE_VERSION=22.14.0-bookworm-slim
 
 # ---------------------------------------------------------------------------
+# Stage 0 — scheduled backup runtime
+# ---------------------------------------------------------------------------
+FROM postgres:16-alpine AS backup
+COPY scripts/backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /usr/local/bin/backup.sh
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/backup.sh"]
+
+# ---------------------------------------------------------------------------
 # Stage 1 — install dependencies (with build toolchain for native modules)
 # ---------------------------------------------------------------------------
 FROM node:${NODE_VERSION} AS deps

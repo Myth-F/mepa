@@ -129,7 +129,10 @@ services:
 
   # Scheduled logical PostgreSQL dumps + MinIO mirror into the backup volume.
   backup:
-    image: postgres:16-alpine
+    image: ${APP_IMAGE:-mepa-app}-backup:${APP_TAG:-latest}
+    build:
+      context: .
+      target: backup
     <<: [*restart, *logging]
     depends_on:
       postgres:
@@ -151,11 +154,9 @@ services:
       S3_SECRET_ACCESS_KEY: ${SERVICE_PASSWORD_MINIO}
     volumes:
       - backup_data:/backups
-      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
     networks:
       - backend
       - egress
-    entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh"]
 
 networks:
   backend:

@@ -110,3 +110,42 @@ Le site doit rester un monolithe modulaire scalable sur VPS :
 - migrations one-shot ;
 - probes liveness/readiness séparées ;
 - pas de contenu de cours hardcodé dans les pages ou composants.
+
+## Audit VPS du 2026-06-17
+
+Constats sur `ovh-vps` :
+
+- `app-wrlkudl8s4joiy7n6sy4qgmh-*`, `postgres-*` et `minio-*` étaient `healthy`.
+- `https://mepa.ipv6-sigl.fr/api/health` et `/api/ready` répondaient en `200`.
+- L'appel direct depuis le réseau Docker vers `app:3000/api/health` répondait en
+  quelques millisecondes.
+- Le service Coolify affiché comme `Restarting` était `backup-*`, pas `app-*`.
+- Dans le conteneur déployé, `/usr/local/bin/backup.sh` était un répertoire. Cela
+  indique un bind mount de fichier dont la source n'existait pas côté hôte Coolify.
+- Des timeouts intermittents ont été reproduits vers Traefik alors que l'appel direct
+  à l'app était sain.
+- Traefik émettait beaucoup d'erreurs non liées à MEPA : rate limit Let's Encrypt sur
+  `adminer-project.myth2logics.dev` et service `api-v8o4...` sans port.
+- Un autre conteneur Coolify (`presenton.ipv6-sigl.fr`) consommait fortement le CPU et
+  redémarrait ses processus internes à cause d'une configuration `LLM_PROVIDER`
+  manquante.
+
+Correction appliquée côté MEPA :
+
+- Le script de backup n'est plus monté depuis un chemin hôte Coolify.
+- Le `Dockerfile` construit une cible `backup` dédiée qui embarque
+  `scripts/backup.sh`.
+- `compose.yaml` utilise cette image de backup et conserve seulement le volume
+  persistant `/backups`.
+
+Actions opérateur recommandées après déploiement :
+
+1. Redéployer MEPA pour recréer le service `backup` avec l'image dédiée.
+2. Vérifier que `docker inspect backup-*` indique
+   `entrypoint=["/bin/sh","/usr/local/bin/backup.sh"]` et que le conteneur reste
+   `Up`, plus `Restarting`.
+3. Corriger ou arrêter temporairement `presenton.ipv6-sigl.fr` tant que
+   `LLM_PROVIDER` n'est pas configuré.
+4. Corriger le projet `v8o4...` qui expose un service Traefik sans port.
+5. Résoudre le rate limit Let's Encrypt du domaine `adminer-project.myth2logics.dev`
+   ou désactiver ce routeur si le service n'est pas utilisé.
