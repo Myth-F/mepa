@@ -6,6 +6,8 @@ import { Breadcrumb } from "@/shared/ui/breadcrumb";
 import { prisma } from "@/shared/db/prisma";
 import { deleteDraftAction, saveDraftAction, startEditAction } from "../actions";
 import { dilemmaOptionsToText, quizOptionsToText } from "../block-form";
+import { dateInputValue } from "@/modules/discovery/format-date";
+import { MediaUploader } from "./media-uploader";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +140,39 @@ function BlockFields({
             defaultValue={type === "quiz" ? stringValue(payload, "explanation") : ""}
           />
         </div>
+        <div className="field-grid">
+          <div className="field">
+            <label htmlFor={`block-${index}-source-title`}>Titre de la source</label>
+            <input
+              id={`block-${index}-source-title`}
+              name={`block-${index}-source-title`}
+              defaultValue={
+                type === "quiz"
+                  ? stringValue(
+                      (payload as { explanationSource?: unknown }).explanationSource ?? {},
+                      "title",
+                    )
+                  : ""
+              }
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={`block-${index}-source-url`}>URL de la source</label>
+            <input
+              id={`block-${index}-source-url`}
+              name={`block-${index}-source-url`}
+              type="url"
+              defaultValue={
+                type === "quiz"
+                  ? stringValue(
+                      (payload as { explanationSource?: unknown }).explanationSource ?? {},
+                      "url",
+                    )
+                  : ""
+              }
+            />
+          </div>
+        </div>
       </div>
 
       <div className="block-editor__type" aria-label="Champs dilemme">
@@ -190,6 +225,45 @@ function BlockFields({
   );
 }
 
+function SourceFields({
+  index,
+  source,
+}: {
+  index: number;
+  source?: { label: string; url: string | null; citation: string | null };
+}) {
+  return (
+    <fieldset className="block-editor">
+      <legend>{source ? `Source ${index + 1}` : "Ajouter une source"}</legend>
+      <div className="field">
+        <label htmlFor={`source-${index}-label`}>Titre de la source</label>
+        <input
+          id={`source-${index}-label`}
+          name={`source-${index}-label`}
+          defaultValue={source?.label ?? ""}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor={`source-${index}-url`}>Adresse de la source</label>
+        <input
+          id={`source-${index}-url`}
+          name={`source-${index}-url`}
+          type="url"
+          defaultValue={source?.url ?? ""}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor={`source-${index}-citation`}>Référence ou date</label>
+        <input
+          id={`source-${index}-citation`}
+          name={`source-${index}-citation`}
+          defaultValue={source?.citation ?? ""}
+        />
+      </div>
+    </fieldset>
+  );
+}
+
 export default async function EditModulePage({
   params,
   searchParams,
@@ -222,6 +296,7 @@ export default async function EditModulePage({
   const current = draft ?? published ?? mod.versions[0];
   const statusMessage = status ? STATUS_MESSAGES[status] : undefined;
   const blockSlotCount = (draft?.blocks.length ?? 0) + 1;
+  const sourceSlotCount = (draft?.sources.length ?? 0) + 1;
 
   return (
     <div className="container">
@@ -275,115 +350,146 @@ export default async function EditModulePage({
           </form>
         </section>
       ) : (
-        <form className="admin-editor" action={saveDraftAction}>
-          <input type="hidden" name="moduleId" value={mod.id} />
-          <input type="hidden" name="moduleVersionId" value={draft.id} />
-          <input type="hidden" name="blockSlotCount" value={blockSlotCount} />
+        <>
+          <MediaUploader />
+          <form className="admin-editor" action={saveDraftAction}>
+            <input type="hidden" name="moduleId" value={mod.id} />
+            <input type="hidden" name="moduleVersionId" value={draft.id} />
+            <input type="hidden" name="blockSlotCount" value={blockSlotCount} />
+            <input type="hidden" name="sourceSlotCount" value={sourceSlotCount} />
 
-          <section className="form-panel" aria-labelledby="metadata-heading">
-            <h2 id="metadata-heading">Informations du module</h2>
-            <div className="field">
-              <label htmlFor="title">Titre</label>
-              <input id="title" name="title" defaultValue={draft.title} required />
-            </div>
-            <div className="field">
-              <label htmlFor="summary">Résumé</label>
-              <textarea id="summary" name="summary" rows={4} defaultValue={draft.summary} />
-            </div>
-            <div className="field">
-              <label htmlFor="categoryId">Catégorie</label>
-              <select id="categoryId" name="categoryId" defaultValue={draft.categoryId ?? ""}>
-                <option value="">Sans catégorie</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field-grid">
+            <section className="form-panel" aria-labelledby="metadata-heading">
+              <h2 id="metadata-heading">Informations du module</h2>
               <div className="field">
-                <label htmlFor="level">Niveau</label>
-                <select id="level" name="level" defaultValue={draft.level ?? ""}>
-                  <option value="">Non renseigné</option>
-                  {Object.entries(LEVEL_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                <label htmlFor="title">Titre</label>
+                <input id="title" name="title" defaultValue={draft.title} required />
+              </div>
+              <div className="field">
+                <label htmlFor="summary">Résumé</label>
+                <textarea id="summary" name="summary" rows={4} defaultValue={draft.summary} />
+              </div>
+              <div className="field">
+                <label htmlFor="publishedAt">Date de publication</label>
+                <p className="field__hint">La date du jour sera utilisée si ce champ est vide.</p>
+                <input
+                  id="publishedAt"
+                  name="publishedAt"
+                  type="date"
+                  defaultValue={dateInputValue(draft.publishedAt)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="categoryId">Catégorie</label>
+                <select id="categoryId" name="categoryId" defaultValue={draft.categoryId ?? ""}>
+                  <option value="">Sans catégorie</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
               </div>
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="level">Niveau</label>
+                  <select id="level" name="level" defaultValue={draft.level ?? ""}>
+                    <option value="">Non renseigné</option>
+                    {Object.entries(LEVEL_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="estimatedMinutes">Durée estimée</label>
+                  <input
+                    id="estimatedMinutes"
+                    name="estimatedMinutes"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    defaultValue={draft.estimatedMinutes ?? ""}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="language">Langue</label>
+                  <input id="language" name="language" defaultValue={draft.language} />
+                </div>
+              </div>
               <div className="field">
-                <label htmlFor="estimatedMinutes">Durée estimée</label>
+                <label htmlFor="tags">Mots-clés</label>
+                <input id="tags" name="tags" defaultValue={draft.tags.join(", ")} />
+              </div>
+              <label className="toggle-choice">
+                <input type="checkbox" name="featured" defaultChecked={mod.featured} />
+                <span>Mettre à la une</span>
+              </label>
+              <div className="field">
+                <label htmlFor="featuredRank">Rang à la une</label>
                 <input
-                  id="estimatedMinutes"
-                  name="estimatedMinutes"
+                  id="featuredRank"
+                  name="featuredRank"
                   type="number"
                   min="1"
                   inputMode="numeric"
-                  defaultValue={draft.estimatedMinutes ?? ""}
+                  defaultValue={mod.featuredRank ?? ""}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="language">Langue</label>
-                <input id="language" name="language" defaultValue={draft.language} />
+            </section>
+
+            <section aria-labelledby="blocks-heading">
+              <div className="section-heading">
+                <p className="eyebrow">Blocs</p>
+                <h2 id="blocks-heading">Composer le parcours</h2>
+                <p>
+                  Modifiez les blocs existants, décochez un bloc pour le retirer, ou remplissez le
+                  bloc vide en bas de page pour en ajouter un.
+                </p>
               </div>
-            </div>
-            <div className="field">
-              <label htmlFor="tags">Mots-clés</label>
-              <input id="tags" name="tags" defaultValue={draft.tags.join(", ")} />
-            </div>
-            <label className="toggle-choice">
-              <input type="checkbox" name="featured" defaultChecked={mod.featured} />
-              <span>Mettre à la une</span>
-            </label>
-            <div className="field">
-              <label htmlFor="featuredRank">Rang à la une</label>
-              <input
-                id="featuredRank"
-                name="featuredRank"
-                type="number"
-                min="1"
-                inputMode="numeric"
-                defaultValue={mod.featuredRank ?? ""}
-              />
-            </div>
-          </section>
-
-          <section aria-labelledby="blocks-heading">
-            <div className="section-heading">
-              <p className="eyebrow">Blocs</p>
-              <h2 id="blocks-heading">Composer le parcours</h2>
-              <p>
-                Modifiez les blocs existants, décochez un bloc pour le retirer, ou remplissez le
-                bloc vide en bas de page pour en ajouter un.
-              </p>
-            </div>
-            {draft.blocks.map((block, index) => (
+              {draft.blocks.map((block, index) => (
+                <BlockFields
+                  key={block.id}
+                  index={index}
+                  block={block}
+                  order={block.position + 1}
+                  enabled
+                />
+              ))}
               <BlockFields
-                key={block.id}
-                index={index}
-                block={block}
-                order={block.position + 1}
-                enabled
+                index={draft.blocks.length}
+                order={draft.blocks.length + 1}
+                enabled={false}
               />
-            ))}
-            <BlockFields
-              index={draft.blocks.length}
-              order={draft.blocks.length + 1}
-              enabled={false}
-            />
-          </section>
+            </section>
 
-          <div className="admin-sticky-actions">
-            <button className="btn" type="submit">
-              Enregistrer le brouillon
-            </button>
-            <Link className="btn btn--secondary" href={`/admin/modules/${mod.id}/preview` as Route}>
-              Prévisualiser
-            </Link>
-          </div>
-        </form>
+            <section aria-labelledby="sources-editor-heading">
+              <div className="section-heading">
+                <p className="eyebrow">Références</p>
+                <h2 id="sources-editor-heading">Documenter les sources</h2>
+                <p>
+                  Ajoutez des références vérifiables. Videz les champs d’une source pour la retirer.
+                </p>
+              </div>
+              {draft.sources.map((source, index) => (
+                <SourceFields key={source.id} index={index} source={source} />
+              ))}
+              <SourceFields index={draft.sources.length} />
+            </section>
+
+            <div className="admin-sticky-actions">
+              <button className="btn" type="submit">
+                Enregistrer le brouillon
+              </button>
+              <Link
+                className="btn btn--secondary"
+                href={`/admin/modules/${mod.id}/preview` as Route}
+              >
+                Prévisualiser
+              </Link>
+            </div>
+          </form>
+        </>
       )}
 
       {draft && (

@@ -141,6 +141,34 @@ export class ModuleService {
       const r = validateBlock(b.type, b.schemaVersion, b.payload);
       if (!r.ok) errors.push(...r.errors.map((e) => `Bloc ${idx + 1} : ${e}`));
     });
+    const imageBlocks = version.blocks
+      .map((block, index) => ({
+        index,
+        mediaId:
+          block.type === "image" &&
+          typeof block.payload === "object" &&
+          block.payload !== null &&
+          "mediaId" in block.payload &&
+          typeof block.payload.mediaId === "string"
+            ? block.payload.mediaId
+            : null,
+      }))
+      .filter((item): item is { index: number; mediaId: string } => Boolean(item.mediaId));
+    if (imageBlocks.length > 0) {
+      const assets = await this.prisma.mediaAsset.findMany({
+        where: {
+          id: { in: imageBlocks.map((item) => item.mediaId) },
+          uploadedAt: { not: null },
+        },
+        select: { id: true },
+      });
+      const available = new Set(assets.map((asset) => asset.id));
+      for (const image of imageBlocks) {
+        if (!available.has(image.mediaId)) {
+          errors.push(`Bloc ${image.index + 1} : le média n’est pas disponible.`);
+        }
+      }
+    }
     return errors;
   }
 
@@ -163,7 +191,7 @@ export class ModuleService {
 
       const updated = await tx.moduleVersion.update({
         where: { id: moduleVersionId },
-        data: { status: "PUBLISHED", publishedAt: new Date() },
+        data: { status: "PUBLISHED", publishedAt: version.publishedAt ?? new Date() },
       });
 
       // Build/refresh the discovery document atomically with publication.
@@ -205,6 +233,7 @@ export class ModuleService {
           estimatedMinutes: latest.estimatedMinutes,
           language: latest.language,
           tags: latest.tags,
+          publishedAt: latest.publishedAt,
           blocks: {
             create: latest.blocks.map((b) => ({
               type: b.type,

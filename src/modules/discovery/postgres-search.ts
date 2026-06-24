@@ -33,7 +33,10 @@ export class PostgresSearch implements SearchPort {
 
   async search(query: SearchQuery): Promise<SearchResponse> {
     const page = Math.max(1, Math.trunc(query.page ?? 1));
-    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.trunc(query.pageSize ?? DEFAULT_PAGE_SIZE)));
+    const pageSize = Math.min(
+      MAX_PAGE_SIZE,
+      Math.max(1, Math.trunc(query.pageSize ?? DEFAULT_PAGE_SIZE)),
+    );
     const offset = (page - 1) * pageSize;
     const sort = query.sort ?? "relevance";
     const f = query.filters ?? {};
@@ -42,28 +45,46 @@ export class PostgresSearch implements SearchPort {
     const hasQ = Boolean(q);
     const tsquery = Prisma.sql`websearch_to_tsquery('french', unaccent(${q ?? ""}))`;
 
-    // Always start with TRUE so the WHERE clause is never empty and facet queries
-    // can safely append further conditions.
-    const base: Prisma.Sql[] = [Prisma.sql`TRUE`];
-    if (hasQ) base.push(Prisma.sql`d."searchVector" @@ ${tsquery}`);
-    if (f.category) base.push(Prisma.sql`d."categorySlug" = ${f.category}`);
-    if (f.level) base.push(Prisma.sql`d."level" = ${f.level}::"CourseLevel"`);
-    if (f.maxMinutes) base.push(Prisma.sql`d."estimatedMinutes" <= ${f.maxMinutes}`);
-    // Tag facet counts use the filters WITHOUT the tag filter, so a learner can
-    // see and add further tags to refine.
-    const whereNoTags = Prisma.sql`WHERE ${Prisma.join(base, " AND ")}`;
-    const conditions = [...base];
-    if (f.tags && f.tags.length > 0) {
-      // Each selected tag refines (narrows) the results: a module must carry ALL
-      // selected tags. Unticking a tag therefore broadens the set (see spec).
-      conditions.push(Prisma.sql`d."tags" @> ${f.tags}::text[]`);
-    }
+    const common: Prisma.Sql[] = [Prisma.sql`TRUE`];
+    if (hasQ) common.push(Prisma.sql`d."searchVector" @@ ${tsquery}`);
+    if (f.maxMinutes) common.push(Prisma.sql`d."estimatedMinutes" <= ${f.maxMinutes}`);
+
+    const categoryCondition =
+      f.categories && f.categories.length > 0
+        ? Prisma.sql`d."categorySlug" IN (${Prisma.join(f.categories)})`
+        : null;
+    const levelCondition =
+      f.levels && f.levels.length > 0
+        ? Prisma.sql`d."level"::text IN (${Prisma.join(f.levels)})`
+        : null;
+    const tagCondition =
+      f.tags && f.tags.length > 0 ? Prisma.sql`d."tags" @> ${f.tags}::text[]` : null;
+
+    const conditions = [...common];
+    if (categoryCondition) conditions.push(categoryCondition);
+    if (levelCondition) conditions.push(levelCondition);
+    if (tagCondition) conditions.push(tagCondition);
     const where = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+
+    // A facet excludes its own dimension so selecting one value does not hide
+    // the alternatives that can be added with OR semantics.
+    const categoryFacet = [...common];
+    if (levelCondition) categoryFacet.push(levelCondition);
+    if (tagCondition) categoryFacet.push(tagCondition);
+    const levelFacet = [...common];
+    if (categoryCondition) levelFacet.push(categoryCondition);
+    if (tagCondition) levelFacet.push(tagCondition);
+    const tagFacet = [...common];
+    if (categoryCondition) tagFacet.push(categoryCondition);
+    if (levelCondition) tagFacet.push(levelCondition);
+    const whereForCategories = Prisma.sql`WHERE ${Prisma.join(categoryFacet, " AND ")}`;
+    const whereForLevels = Prisma.sql`WHERE ${Prisma.join(levelFacet, " AND ")}`;
+    const whereForTags = Prisma.sql`WHERE ${Prisma.join(tagFacet, " AND ")}`;
 
     let orderBy: Prisma.Sql;
     switch (sort) {
       case "recent":
-        orderBy = Prisma.sql`ORDER BY d."publishedAt" DESC`;
+        orderBy = Prisma.sql`ORDER BY d."publishedAt" DESC NULLS LAST, d."title" ASC`;
         break;
       case "popular":
         orderBy = Prisma.sql`ORDER BY d."popularity" DESC, d."publishedAt" DESC`;
@@ -75,7 +96,7 @@ export class PostgresSearch implements SearchPort {
       default:
         orderBy = hasQ
           ? Prisma.sql`ORDER BY ts_rank(d."searchVector", ${tsquery}) DESC, d."publishedAt" DESC`
-          : Prisma.sql`ORDER BY d."publishedAt" DESC`;
+          : Prisma.sql`ORDER BY d."popularity" DESC, d."title" ASC`;
         break;
     }
 
@@ -94,18 +115,18 @@ export class PostgresSearch implements SearchPort {
       `),
       this.prisma.$queryRaw<{ value: string; label: string; count: bigint }[]>(Prisma.sql`
         SELECT d."categorySlug" AS value, d."categoryName" AS label, count(*)::bigint AS count
-        FROM "module_search_document" d ${where} AND d."categorySlug" IS NOT NULL
+        FROM "module_search_document" d ${whereForCategories} AND d."categorySlug" IS NOT NULL
         GROUP BY d."categorySlug", d."categoryName" ORDER BY count DESC, label ASC
       `),
       this.prisma.$queryRaw<{ value: string; count: bigint }[]>(Prisma.sql`
         SELECT d."level"::text AS value, count(*)::bigint AS count
-        FROM "module_search_document" d ${where} AND d."level" IS NOT NULL
+        FROM "module_search_document" d ${whereForLevels} AND d."level" IS NOT NULL
         GROUP BY d."level" ORDER BY count DESC
       `),
       this.prisma.$queryRaw<{ value: string; count: bigint }[]>(Prisma.sql`
         SELECT t AS value, count(*)::bigint AS count
         FROM "module_search_document" d, unnest(d."tags") AS t
-        ${whereNoTags}
+        ${whereForTags}
         GROUP BY t ORDER BY count DESC, value ASC LIMIT 30
       `),
     ]);

@@ -15,7 +15,7 @@ export async function signInLearnerAction(formData: FormData): Promise<void> {
   const password = String(formData.get("password") ?? "");
   if (!email || !password) redirect("/account/sign-in?error=missing");
   if (!(await signInLearner(email, password))) redirect("/account/sign-in?error=invalid");
-  redirect("/account");
+  redirect("/account/dashboard");
 }
 
 export async function registerLearnerAction(formData: FormData): Promise<void> {
@@ -25,7 +25,7 @@ export async function registerLearnerAction(formData: FormData): Promise<void> {
     password: String(formData.get("password") ?? ""),
   });
   if (result !== "created") redirect(`/account/register?error=${result}`);
-  redirect("/account");
+  redirect("/account/dashboard");
 }
 
 export async function deleteLearnerAction(): Promise<void> {

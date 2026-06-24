@@ -2,6 +2,17 @@ import type { PrismaClient } from "@/generated/prisma";
 import { awardPoints } from "@/modules/gamification/service";
 import { scoreQuiz } from "./scoring";
 
+export class ModuleCompletionRequirementError extends Error {
+  readonly statusCode = 422;
+  constructor(
+    readonly missingQuizCount: number,
+    readonly missingDilemmaCount: number,
+  ) {
+    super("Répondez à tous les quiz et dilemmes avant de terminer le module.");
+    this.name = "ModuleCompletionRequirementError";
+  }
+}
+
 export async function recordQuizAttempt(
   db: PrismaClient,
   input: { learnerId: string; blockId: string; selectedKeys: string[] },
@@ -91,9 +102,32 @@ export async function recordModuleCompletion(
   return db.$transaction(async (tx) => {
     const version = await tx.moduleVersion.findFirst({
       where: { id: input.moduleVersionId, status: "PUBLISHED" },
-      select: { id: true },
+      select: { id: true, blocks: { select: { id: true, type: true } } },
     });
     if (!version) throw new Error("Module publié introuvable.");
+
+    const quizIds = version.blocks
+      .filter((block) => block.type === "quiz")
+      .map((block) => block.id);
+    const dilemmaIds = version.blocks
+      .filter((block) => block.type === "dilemma")
+      .map((block) => block.id);
+    const [answeredQuizzes, answeredDilemmas] = await Promise.all([
+      tx.quizAttempt.findMany({
+        where: { learnerId: input.learnerId, blockId: { in: quizIds } },
+        distinct: ["blockId"],
+        select: { blockId: true },
+      }),
+      tx.dilemmaVote.findMany({
+        where: { learnerId: input.learnerId, blockId: { in: dilemmaIds } },
+        select: { blockId: true },
+      }),
+    ]);
+    const missingQuizCount = quizIds.length - answeredQuizzes.length;
+    const missingDilemmaCount = dilemmaIds.length - answeredDilemmas.length;
+    if (missingQuizCount > 0 || missingDilemmaCount > 0) {
+      throw new ModuleCompletionRequirementError(missingQuizCount, missingDilemmaCount);
+    }
 
     const existing = await tx.moduleCompletion.findUnique({
       where: {

@@ -8,8 +8,11 @@ export const FIRST_VISIT_COOKIE = "mepa_seen";
  * landing page vary its onboarding copy — so it needs no consent banner (CNIL).
  */
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  if (!request.cookies.has(FIRST_VISIT_COOKIE)) {
+  const isFirstVisit = !request.cookies.has(FIRST_VISIT_COOKIE);
+  const requestHeaders = new Headers(request.headers);
+  if (isFirstVisit) requestHeaders.set("x-mepa-first-visit", "1");
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  if (isFirstVisit) {
     response.cookies.set(FIRST_VISIT_COOKIE, "1", {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,

@@ -10,8 +10,8 @@ export type SearchSort = "relevance" | "recent" | "popular" | "title";
 export const SEARCH_SORTS: SearchSort[] = ["relevance", "recent", "popular", "title"];
 
 export interface SearchFilters {
-  category?: string; // category slug
-  level?: CourseLevel;
+  categories?: string[]; // category slugs, OR within this dimension
+  levels?: CourseLevel[]; // OR within this dimension
   tags?: string[];
   maxMinutes?: number;
 }

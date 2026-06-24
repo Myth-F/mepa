@@ -45,6 +45,8 @@ jobs:
         run: npx prisma migrate deploy
       - name: Unit + integration tests
         run: npm test
+        env:
+          RUN_DB_INTEGRATION: "true"
       - name: Production build
         run: npm run build
 

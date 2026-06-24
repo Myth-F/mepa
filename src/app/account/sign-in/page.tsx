@@ -2,6 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumb } from "@/shared/ui/breadcrumb";
 import { signInLearnerAction } from "../actions";
+import { PasswordField } from "../password-field";
+import { getCurrentLearner } from "@/shared/auth/learner-session";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Retrouver ma progression" };
 
@@ -15,6 +18,7 @@ export default async function LearnerSignInPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  if (await getCurrentLearner()) redirect("/account/dashboard");
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
@@ -51,18 +55,15 @@ export default async function LearnerSignInPage({
             aria-describedby={errorMessage ? "signin-error" : undefined}
           />
         </div>
-        <div className="field">
-          <label htmlFor="password">Mot de passe</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            aria-invalid={errorMessage ? true : undefined}
-            aria-describedby={errorMessage ? "signin-error" : undefined}
-          />
-        </div>
+        <PasswordField
+          id="password"
+          autoComplete="current-password"
+          invalid={Boolean(errorMessage)}
+          describedBy={errorMessage ? "signin-error" : undefined}
+        />
+        <p>
+          <Link href="/account/forgot-password">Mot de passe oublié ?</Link>
+        </p>
         <button className="btn" type="submit">
           Retrouver ma progression
         </button>

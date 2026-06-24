@@ -64,6 +64,11 @@ export default async function NewModulePage({
           <textarea id="summary" name="summary" rows={4} />
         </div>
         <div className="field">
+          <label htmlFor="publishedAt">Date de publication</label>
+          <p className="field__hint">Optionnel. La date du jour sera utilisée par défaut.</p>
+          <input id="publishedAt" name="publishedAt" type="date" />
+        </div>
+        <div className="field">
           <label htmlFor="categoryId">Catégorie</label>
           <select id="categoryId" name="categoryId" defaultValue="">
             <option value="">Sans catégorie</option>

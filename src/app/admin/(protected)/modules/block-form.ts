@@ -64,6 +64,14 @@ function parseBlock(formData: FormData, index: number): DraftBlockInput | string
           question: field(formData, `block-${index}-question`),
           options: parseQuizOptions(field(formData, `block-${index}-options`)),
           explanation: field(formData, `block-${index}-explanation`) || undefined,
+          explanationSource:
+            field(formData, `block-${index}-source-title`) &&
+            field(formData, `block-${index}-source-url`)
+              ? {
+                  title: field(formData, `block-${index}-source-title`),
+                  url: field(formData, `block-${index}-source-url`),
+                }
+              : undefined,
         },
       };
     case "dilemma":

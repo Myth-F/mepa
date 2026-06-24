@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma, PrismaClient } from "@/generated/prisma";
 import { projectBlockText } from "@/modules/authoring/blocks/registry";
 
 // Builds and maintains the denormalized discovery document for a module. The
@@ -83,4 +83,13 @@ export async function writeSearchDocument(
       setweight(to_tsvector('french', unaccent(coalesce("body", ''))), 'C')
     WHERE "moduleId" = ${moduleId}
   `;
+}
+
+/** Rebuild every discovery row from the authoritative current module state. */
+export async function recomputeSearchDocuments(prisma: PrismaClient): Promise<number> {
+  const modules = await prisma.module.findMany({ select: { id: true } });
+  for (const courseModule of modules) {
+    await prisma.$transaction((tx) => writeSearchDocument(tx, courseModule.id));
+  }
+  return modules.length;
 }

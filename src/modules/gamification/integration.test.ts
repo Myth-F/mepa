@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/shared/db/prisma";
 import {
+  ModuleCompletionRequirementError,
   recordDilemmaVote,
   recordModuleCompletion,
   recordQuizAttempt,
@@ -77,6 +78,11 @@ suite("gamification database integration", () => {
   });
 
   it("awards each learning source once and keeps the aggregate recomputable", async () => {
+    await expect(
+      recordModuleCompletion(prisma, { learnerId, moduleVersionId }),
+    ).rejects.toBeInstanceOf(ModuleCompletionRequirementError);
+    expect(await prisma.moduleCompletion.count({ where: { learnerId, moduleVersionId } })).toBe(0);
+
     expect(
       (await recordQuizAttempt(prisma, { learnerId, blockId: quizId, selectedKeys: ["yes"] }))
         .awarded,

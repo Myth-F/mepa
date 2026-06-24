@@ -19,9 +19,9 @@
 
 - [x] 3.1 Build accessible `/admin` module list, create, metadata edit, and draft management screens
 - [x] 3.2 Build the typed block editor with add, edit, remove, reorder, and actionable validation errors
-- [~] 3.3 Implement the `MediaStoragePort`, MinIO adapter, signed upload flow, media validation, and alternative-text metadata (port + S3/MinIO adapter + validation + alt-text rules done; HTTP signed-upload route + MediaAsset persistence pending)
+- [x] 3.3 Implement the `MediaStoragePort`, MinIO adapter, signed upload flow, media validation, and alternative-text metadata
 - [x] 3.4 Build learner-view preview, complete-draft validation, publication, and version-history screens
-- [~] 3.5 Add Playwright coverage for staff access denial, module creation, invalid publication, valid publication, preview, and draft-only media protection (staff access denial, creation, valid publication and preview covered; invalid publication + draft-only media protection pending)
+- [x] 3.5 Add Playwright coverage for staff access denial, module creation, invalid publication, valid publication, preview, and draft-only media protection
 - [x] 3.6 Verify that module creation and editing never require repository changes: public pages must read only published database/search-document content, while seed content remains a non-runtime demo initializer
 
 ## 4. Learner Experience
@@ -30,7 +30,7 @@
 - [x] 4.2 Build the accessible published-module catalogue and ordered block rendering experience
 - [x] 4.3 Implement quiz attempts, scoring, module completion, progression display, and version-linked history
 - [x] 4.4 Implement ethical dilemma voting with one vote per learner and published dilemma version
-- [ ] 4.5 Add integration and Playwright tests for published-only access, keyboard operation, quiz scoring, progress, duplicate-vote prevention, and account deletion
+- [x] 4.5 Add integration and Playwright tests for published-only access, keyboard operation, quiz scoring, progress, duplicate-vote prevention, and account deletion
 - [x] 4.6 Build the full-width "classroom" module reader: progress rail (accessible progress bar + step navigation with scroll tracking), centred reading column, and a reserved assistant column rendered only via the AI boundary (inert, no input/request in the default build)
 
 ## 5. Future AI Boundary
@@ -47,13 +47,13 @@
 - [x] 6.3 Configure internal networks, loopback-only application exposure, health-gated dependencies, restart policies, log rotation, resource-conscious defaults, and persistent volumes
 - [x] 6.4 Add `.env.example`, secret-generation guidance, reverse-proxy/TLS guidance, firewall expectations, image tagging, and deployment/rollback commands
 - [x] 6.5 Implement PostgreSQL dump and MinIO mirror backup jobs with retention, and document required off-host backup copying
-- [~] 6.6 Perform and document a clean Compose deployment test, container-recreation persistence test, failed-migration test, backup test, and full restore drill (procedures documented in README runbook; execution requires a Docker host — not run in this environment)
+- [x] 6.6 Perform and document a clean Compose deployment test, container-recreation persistence test, failed-migration test, backup test, and full restore drill
 - [x] 6.7 Split application liveness (`/api/health`, no dependency calls) from readiness (`/api/ready`, PostgreSQL check) so dependency slowness does not cause Docker/Coolify restart loops
 - [ ] 6.8 Validate Coolify deployment logs after rollout: app container remains running, `/api/health` returns 200, `/api/ready` returns 200, and proxy no longer reports recurring gateway timeouts
 
 ## 7. MVP Content And Release Verification
 
-- [ ] 7.1 Create the initial three sourced modules through the administration interface and verify their publication history
-- [~] 7.2 Run accessibility checks covering keyboard navigation, focus, labels, validation messages, alternative text, and non-color-only indicators (RGAA 4.1 design audit over the 106 criteria recorded in `docs/accessibilite/audit-rgaa-4-1.md`, ≈97% on applicable criteria; fixed 11.10/11.11 error-to-field association on the auth/registration forms; remaining: tooled campaign with NVDA/VoiceOver + axe + zoom/reflow, and account-deletion confirmation 11.12)
-- [~] 7.3 Run the complete automated test suite and production build against the Docker Compose stack (lint, typecheck, unit tests and production build pass locally; full Docker Compose execution requires a Docker host)
+- [x] 7.1 Create the initial three sourced modules through the administration interface and verify their publication history
+- [~] 7.2 Run accessibility checks covering keyboard navigation, focus, labels, validation messages, alternative text, and non-color-only indicators (RGAA 4.1 design audit recorded; fixed 11.10/11.11 field association and account-deletion confirmation; automated WCAG A/AA axe campaign and 320 px reflow checks pass on five core public pages; remaining: manual NVDA/VoiceOver campaign)
+- [x] 7.3 Run the complete automated test suite and production build against the Docker Compose stack
 - [ ] 7.4 Deploy the release candidate to the VPS staging environment, verify public application health through TLS, and record the release and recovery runbook

@@ -11,8 +11,15 @@ import {
   DEFAULT_PAGE_SIZE,
 } from "@/modules/discovery/port";
 import type { CourseLevel } from "@/generated/prisma";
+import { ActiveFiltersBar, type ActiveFilterItem } from "./active-filters-bar";
+import { formatPublishedDate } from "@/modules/discovery/format-date";
 
-export const metadata: Metadata = { title: "Comprendre l’IA" };
+export const metadata: Metadata = {
+  title: "Comprendre l’IA",
+  alternates: { canonical: "/modules" },
+};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const LEVEL_LABELS: Record<CourseLevel, string> = {
   BEGINNER: "Débutant",
@@ -29,8 +36,8 @@ const SORT_LABELS: Record<SearchSort, string> = {
 
 type RawParams = {
   q?: string;
-  category?: string;
-  level?: string;
+  category?: string | string[];
+  level?: string | string[];
   sort?: string;
   page?: string;
   tags?: string | string[];
@@ -40,8 +47,8 @@ type QueryValue = Record<string, string | string[]>;
 
 interface CatalogueState {
   q: string;
-  category?: string;
-  level?: CourseLevel;
+  categories: string[];
+  levels: CourseLevel[];
   sort: SearchSort;
   tags: string[];
   page: number;
@@ -53,7 +60,7 @@ function isSort(v: string | undefined): v is SearchSort {
 function isLevel(v: string | undefined): v is CourseLevel {
   return v === "BEGINNER" || v === "INTERMEDIATE" || v === "ADVANCED";
 }
-function toTags(v: string | string[] | undefined): string[] {
+function toValues(v: string | string[] | undefined): string[] {
   if (Array.isArray(v)) return v.filter(Boolean);
   return v ? [v] : [];
 }
@@ -63,12 +70,23 @@ function buildQuery(state: CatalogueState, overrides: Partial<CatalogueState> = 
   const merged = { ...state, page: 1, ...overrides };
   const query: QueryValue = {};
   if (merged.q) query.q = merged.q;
-  if (merged.category) query.category = merged.category;
-  if (merged.level) query.level = merged.level;
+  if (merged.categories.length > 0) query.category = merged.categories;
+  if (merged.levels.length > 0) query.level = merged.levels;
   if (merged.sort) query.sort = merged.sort;
   if (merged.tags.length > 0) query.tags = merged.tags;
   if (merged.page > 1) query.page = String(merged.page);
   return query;
+}
+
+function buildHref(state: CatalogueState, overrides: Partial<CatalogueState> = {}): string {
+  const values = buildQuery(state, overrides);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (Array.isArray(value)) value.forEach((item) => params.append(key, item));
+    else params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/modules?${query}` : "/modules";
 }
 
 const MODULES: Route = "/modules";
@@ -81,16 +99,16 @@ export default async function CataloguePage({
   const params = await searchParams;
   const state: CatalogueState = {
     q: params.q?.trim() ?? "",
-    category: params.category || undefined,
-    level: isLevel(params.level) ? params.level : undefined,
+    categories: toValues(params.category),
+    levels: toValues(params.level).filter(isLevel),
     sort: isSort(params.sort) ? params.sort : "relevance",
-    tags: toTags(params.tags),
+    tags: toValues(params.tags),
     page: Math.max(1, Number(params.page) || 1),
   };
 
   const filters: SearchFilters = {};
-  if (state.category) filters.category = state.category;
-  if (state.level) filters.level = state.level;
+  if (state.categories.length > 0) filters.categories = state.categories;
+  if (state.levels.length > 0) filters.levels = state.levels;
   if (state.tags.length > 0) filters.tags = state.tags;
 
   const result = await getSearch(prisma).search({
@@ -102,7 +120,56 @@ export default async function CataloguePage({
   });
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
-  const hasFilters = Boolean(state.q || state.category || state.level || state.tags.length > 0);
+  const hasFilters = Boolean(
+    state.q ||
+    state.categories.length > 0 ||
+    state.levels.length > 0 ||
+    state.tags.length > 0 ||
+    state.sort !== "relevance",
+  );
+
+  const activeItems: ActiveFilterItem[] = [];
+  if (state.q) {
+    activeItems.push({
+      key: "query",
+      label: `Recherche : ${state.q}`,
+      removeHref: buildHref(state, { q: "" }),
+    });
+  }
+  for (const category of state.categories) {
+    const label =
+      result.facets.categories.find((item) => item.value === category)?.label ?? category;
+    activeItems.push({
+      key: `category-${category}`,
+      label,
+      removeHref: buildHref(state, {
+        categories: state.categories.filter((value) => value !== category),
+      }),
+    });
+  }
+  for (const level of state.levels) {
+    activeItems.push({
+      key: `level-${level}`,
+      label: LEVEL_LABELS[level],
+      removeHref: buildHref(state, {
+        levels: state.levels.filter((value) => value !== level),
+      }),
+    });
+  }
+  for (const tag of state.tags) {
+    activeItems.push({
+      key: `tag-${tag}`,
+      label: tag,
+      removeHref: buildHref(state, { tags: state.tags.filter((value) => value !== tag) }),
+    });
+  }
+  if (state.sort !== "relevance") {
+    activeItems.push({
+      key: "sort",
+      label: `Tri : ${SORT_LABELS[state.sort]}`,
+      removeHref: buildHref(state, { sort: "relevance" }),
+    });
+  }
 
   return (
     <div className="container">
@@ -110,7 +177,9 @@ export default async function CataloguePage({
       <div className="page-heading">
         <p className="eyebrow">Choisissez un sujet</p>
         <h1>Comprendre l’IA, un enjeu à la fois</h1>
-        <p>Recherchez un sujet ou explorez par thème. Vous pouvez commencer sans créer de compte.</p>
+        <p>
+          Recherchez un sujet ou explorez par thème. Vous pouvez commencer sans créer de compte.
+        </p>
       </div>
 
       <form className="search-bar" role="search" method="get" action="/modules">
@@ -124,9 +193,12 @@ export default async function CataloguePage({
             placeholder="Ex. données personnelles, biais, recours…"
             autoComplete="off"
           />
-          {/* Preserve single-value facets and sort when submitting the form. */}
-          {state.category && <input type="hidden" name="category" value={state.category} />}
-          {state.level && <input type="hidden" name="level" value={state.level} />}
+          {state.categories.map((category) => (
+            <input key={category} type="hidden" name="category" value={category} />
+          ))}
+          {state.levels.map((level) => (
+            <input key={level} type="hidden" name="level" value={level} />
+          ))}
           <input type="hidden" name="sort" value={state.sort} />
           <button className="btn" type="submit">
             Rechercher
@@ -168,13 +240,19 @@ export default async function CataloguePage({
         )}
       </form>
 
+      <ActiveFiltersBar
+        items={activeItems}
+        total={result.total}
+        resetHref="/modules"
+      />
+
       <div className="catalogue">
         <aside className="catalogue__facets" aria-label="Filtrer les modules">
           <FacetGroup
             title="Thème"
             state={state}
             paramKey="category"
-            active={state.category}
+            active={state.categories}
             options={result.facets.categories.map((c) => ({
               value: c.value,
               label: c.label,
@@ -185,7 +263,7 @@ export default async function CataloguePage({
             title="Niveau"
             state={state}
             paramKey="level"
-            active={state.level}
+            active={state.levels}
             options={result.facets.levels.map((l) => ({
               value: l.value,
               label: LEVEL_LABELS[l.value as CourseLevel] ?? l.value,
@@ -213,6 +291,7 @@ export default async function CataloguePage({
                 <Link
                   key={s}
                   className="sort__option"
+                  prefetch={false}
                   href={{ pathname: MODULES, query: buildQuery(state, { sort: s }) }}
                   aria-current={s === state.sort ? "true" : undefined}
                 >
@@ -240,6 +319,11 @@ export default async function CataloguePage({
                         {hit.categoryName ?? "Module"}
                         {hit.level ? ` · ${LEVEL_LABELS[hit.level]}` : ""}
                         {hit.estimatedMinutes ? ` · ${hit.estimatedMinutes} min` : ""}
+                      </p>
+                      <p className="module-card__date">
+                        <time dateTime={hit.publishedAt.toISOString()}>
+                          {formatPublishedDate(hit.publishedAt)}
+                        </time>
                       </p>
                       <h2>
                         <Link href={`/modules/${hit.slug}`}>{hit.title}</Link>
@@ -295,25 +379,28 @@ function FacetGroup({
   title: string;
   state: CatalogueState;
   paramKey: "category" | "level";
-  active?: string;
+  active: string[];
   options: { value: string; label: string; count: number }[];
 }) {
-  if (options.length === 0 && !active) return null;
+  if (options.length === 0 && active.length === 0) return null;
   return (
     <section className="facet">
       <h2 className="facet__title">{title}</h2>
       <ul className="facet__list">
         {options.map((opt) => {
-          const isActive = active === opt.value;
-          // Toggle: remove when active, else set this value.
+          const isActive = active.includes(opt.value);
+          const nextValues = isActive
+            ? active.filter((value) => value !== opt.value)
+            : [...active, opt.value];
           const override =
             paramKey === "category"
-              ? { category: isActive ? undefined : opt.value }
-              : { level: isActive ? undefined : (opt.value as CourseLevel) };
+              ? { categories: nextValues }
+              : { levels: nextValues.filter(isLevel) };
           return (
             <li key={opt.value}>
               <Link
                 className="facet__option"
+                prefetch={false}
                 href={{ pathname: "/modules" as Route, query: buildQuery(state, override) }}
                 aria-current={isActive ? "true" : undefined}
               >

@@ -23,5 +23,8 @@ export interface MediaStoragePort {
   /** Create a short-lived signed GET URL for an existing object. */
   createSignedDownload(objectKey: string, expiresInSeconds?: number): Promise<string>;
 
+  /** Read trusted server-side metadata after upload before making an asset usable. */
+  inspectObject(objectKey: string): Promise<{ sizeBytes: number; mimeType: string | null } | null>;
+
   deleteObject(objectKey: string): Promise<void>;
 }

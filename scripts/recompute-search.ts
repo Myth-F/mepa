@@ -4,15 +4,10 @@
  * backfill existing modules:  npm run search:recompute
  */
 import { prisma } from "../src/shared/db/prisma";
-import { writeSearchDocument } from "../src/modules/discovery/search-document";
+import { recomputeSearchDocuments } from "../src/modules/discovery/search-document";
 
 async function main() {
-  const modules = await prisma.module.findMany({ select: { id: true } });
-  let written = 0;
-  for (const m of modules) {
-    await prisma.$transaction((tx) => writeSearchDocument(tx, m.id));
-    written += 1;
-  }
+  const written = await recomputeSearchDocuments(prisma);
   console.log(`Recomputed discovery documents for ${written} module(s).`);
 }
 

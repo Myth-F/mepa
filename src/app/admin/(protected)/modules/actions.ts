@@ -52,6 +52,37 @@ function minutesFromForm(formData: FormData): number | null {
   return Number.isInteger(minutes) && minutes > 0 ? minutes : null;
 }
 
+function publicationDateFromForm(formData: FormData): Date | null {
+  const value = String(formData.get("publishedAt") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T12:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function sourcesFromForm(formData: FormData):
+  | { ok: true; sources: { label: string; url: string | null; citation: string | null }[] }
+  | { ok: false } {
+  const count = Math.max(0, Math.min(20, Number(formData.get("sourceSlotCount")) || 0));
+  const sources: { label: string; url: string | null; citation: string | null }[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const label = nullableString(formData, `source-${index}-label`);
+    const url = nullableString(formData, `source-${index}-url`);
+    const citation = nullableString(formData, `source-${index}-citation`);
+    if (!label && !url && !citation) continue;
+    if (!label) return { ok: false };
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return { ok: false };
+      } catch {
+        return { ok: false };
+      }
+    }
+    sources.push({ label, url, citation });
+  }
+  return { ok: true, sources };
+}
+
 function moduleRevalidationPaths(moduleSlug?: string | null) {
   revalidatePath("/admin");
   revalidatePath("/admin/modules");
@@ -78,6 +109,7 @@ async function updateDraftVersionMetadata(moduleVersionId: string, formData: For
     data: {
       title,
       summary: String(formData.get("summary") ?? "").trim(),
+      publishedAt: publicationDateFromForm(formData),
     },
   });
 }
@@ -121,6 +153,10 @@ export async function createModuleAction(formData: FormData): Promise<void> {
       },
     });
     moduleId = mod.id;
+    await prisma.moduleVersion.updateMany({
+      where: { moduleId, status: "DRAFT" },
+      data: { publishedAt: publicationDateFromForm(formData) },
+    });
     await updateModuleCuration(moduleId, formData);
   } catch (error) {
     if (
@@ -146,7 +182,8 @@ export async function saveDraftAction(formData: FormData): Promise<void> {
 
   const mod = await prisma.module.findUnique({ where: { id: moduleId }, select: { slug: true } });
   const parsed = parseDraftBlocksFromForm(formData);
-  if (parsed.errors.length > 0) redirect(statusUrl(moduleId, "invalid"));
+  const parsedSources = sourcesFromForm(formData);
+  if (parsed.errors.length > 0 || !parsedSources.ok) redirect(statusUrl(moduleId, "invalid"));
 
   const service = new ModuleService(prisma);
   try {
@@ -154,6 +191,15 @@ export async function saveDraftAction(formData: FormData): Promise<void> {
     await updateModuleCuration(moduleId, formData);
     const result = await service.setDraftBlocks(moduleVersionId, parsed.blocks);
     if (!result.ok) redirect(statusUrl(moduleId, "invalid"));
+    await prisma.moduleVersion.update({
+      where: { id: moduleVersionId, status: "DRAFT" },
+      data: {
+        sources: {
+          deleteMany: {},
+          create: parsedSources.sources,
+        },
+      },
+    });
   } catch (error) {
     if (error instanceof PublishedVersionImmutableError) redirect(statusUrl(moduleId, "immutable"));
     throw error;

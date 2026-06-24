@@ -5,6 +5,8 @@ import { Breadcrumb } from "@/shared/ui/breadcrumb";
 import { prisma } from "@/shared/db/prisma";
 import { labelForLevel } from "@/modules/gamification/rules";
 import { Prisma } from "@/generated/prisma";
+import { getCurrentLearner } from "@/shared/auth/learner-session";
+import { reportUsernameAction } from "./actions";
 
 export const metadata: Metadata = { title: "Classement facultatif" };
 export const dynamic = "force-dynamic";
@@ -21,10 +23,13 @@ interface LeaderboardRow {
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; report?: string }>;
 }) {
   await connection();
-  const { page: rawPage } = await searchParams;
+  const [{ page: rawPage, report }, currentLearner] = await Promise.all([
+    searchParams,
+    getCurrentLearner(),
+  ]);
   const page = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
   const [counts, scores] = await Promise.all([
@@ -56,7 +61,20 @@ export default async function LeaderboardPage({
           Seules les personnes ayant choisi de participer apparaissent ici. Aucun e-mail n’est
           affiché.
         </p>
+        <p>
+          <Link href="/account/settings">Gérer mon pseudonyme et ma participation</Link>
+        </p>
       </div>
+      {report === "sent" && (
+        <div className="alert alert--success" role="status">
+          Merci. Le signalement a été transmis à l’équipe.
+        </div>
+      )}
+      {report === "invalid" && (
+        <div className="alert alert--error" role="alert">
+          Ce signalement n’a pas pu être enregistré.
+        </div>
+      )}
       {scores.length === 0 ? (
         <div className="empty-state">
           <h2>Le classement est encore vide</h2>
@@ -74,6 +92,7 @@ export default async function LeaderboardPage({
                 <th scope="col">Pseudonyme</th>
                 <th scope="col">Niveau</th>
                 <th scope="col">Points</th>
+                <th scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -85,6 +104,34 @@ export default async function LeaderboardPage({
                     Niveau {score.level} · {labelForLevel(score.level)}
                   </td>
                   <td>{score.totalPoints}</td>
+                  <td>
+                    {currentLearner?.id !== score.learnerId && (
+                      <details className="report-username">
+                        <summary>Signaler ce pseudonyme</summary>
+                        <form action={reportUsernameAction}>
+                          <input type="hidden" name="learnerId" value={score.learnerId} />
+                          <label htmlFor={`reason-${score.learnerId}`}>Motif</label>
+                          <select
+                            id={`reason-${score.learnerId}`}
+                            name="reason"
+                            required
+                            defaultValue=""
+                          >
+                            <option value="" disabled>
+                              Choisir
+                            </option>
+                            <option value="injurieux">Injurieux</option>
+                            <option value="discriminatoire">Discriminatoire</option>
+                            <option value="usurpation">Usurpation</option>
+                            <option value="autre">Autre</option>
+                          </select>
+                          <button className="text-link" type="submit">
+                            Envoyer
+                          </button>
+                        </form>
+                      </details>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

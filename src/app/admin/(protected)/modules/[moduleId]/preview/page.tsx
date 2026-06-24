@@ -61,6 +61,14 @@ function PreviewBlock({ type, payload }: { type: string; payload: unknown }) {
           ))}
         </ul>
         {parsed.data.explanation && <p>{parsed.data.explanation}</p>}
+        {parsed.data.explanationSource && (
+          <p>
+            Source :{" "}
+            <a href={parsed.data.explanationSource.url} target="_blank" rel="noreferrer">
+              {parsed.data.explanationSource.title}
+            </a>
+          </p>
+        )}
       </div>
     );
   }
@@ -87,8 +95,12 @@ function PreviewBlock({ type, payload }: { type: string; payload: unknown }) {
     const parsed = imagePayloadSchema.safeParse(payload);
     if (!parsed.success) return null;
     return (
-      <figure className="media-placeholder">
-        <p>[Image{parsed.data.decorative ? " décorative" : ` : ${parsed.data.alt}`}]</p>
+      <figure className="module-media">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/api/media/${encodeURIComponent(parsed.data.mediaId)}`}
+          alt={parsed.data.decorative ? "" : parsed.data.alt}
+        />
         {parsed.data.caption && <figcaption>{parsed.data.caption}</figcaption>}
       </figure>
     );
@@ -203,7 +215,16 @@ export default async function ModulePreviewPage({
           <h2 id="preview-sources-heading">Sources</h2>
           <ul>
             {version.sources.map((source) => (
-              <li key={source.id}>{source.label}</li>
+              <li key={source.id}>
+                {source.url ? (
+                  <a href={source.url} target="_blank" rel="noreferrer">
+                    {source.label} <span className="sr-only">(nouvel onglet)</span>
+                  </a>
+                ) : (
+                  source.label
+                )}
+                {source.citation ? ` — ${source.citation}` : ""}
+              </li>
             ))}
           </ul>
         </section>

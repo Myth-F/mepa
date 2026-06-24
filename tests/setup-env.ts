@@ -8,3 +8,4 @@ process.env.S3_BUCKET ??= "test-media";
 process.env.S3_ACCESS_KEY_ID ??= "test";
 process.env.S3_SECRET_ACCESS_KEY ??= "test-secret";
 process.env.TUTOR_ENABLED ??= "false";
+process.env.APP_URL ??= "http://localhost:3000";

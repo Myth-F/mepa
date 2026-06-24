@@ -31,6 +31,12 @@ export const quizPayloadSchema = z
     question: z.string().min(1, "La question est obligatoire."),
     options: z.array(quizOptionSchema).min(2, "Un quiz doit proposer au moins deux réponses."),
     explanation: z.string().optional(),
+    explanationSource: z
+      .object({
+        title: z.string().min(1, "Le titre de la source est obligatoire."),
+        url: z.string().url("L’adresse de la source doit être une URL valide."),
+      })
+      .optional(),
   })
   .refine((p) => p.options.some((o) => o.correct), {
     message: "Au moins une réponse correcte est requise.",

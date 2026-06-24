@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { ModuleProgressBar } from "./module-progress-bar";
 
 export interface ReaderStep {
   id: string;
@@ -57,34 +58,20 @@ export function ReaderShell({
     return () => observer.disconnect();
   }, [steps, total]);
 
-  const pct = total > 0 ? Math.round(((active + 1) / total) * 100) : 0;
-
   const jumpTo = (id: string) => {
     const el = document.getElementById(`step-${id}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     // Move focus to the step for keyboard and screen-reader users.
-    window.setTimeout(() => el.focus({ preventScroll: true }), 350);
+    window.setTimeout(() => el.focus({ preventScroll: true }), 0);
     setTocOpen(false);
   };
 
   return (
-    <div className="reader">
+    <div className={`reader${aside ? " reader--with-aside" : ""}`}>
       <div className="reader__rail">
         <nav className="reader-toc" aria-label="Progression du module">
-          <p className="reader-progress__label">
-            Étape <strong>{Math.min(active + 1, total)}</strong> sur {total}
-          </p>
-          <div
-            className="reader-progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={pct}
-            aria-label="Avancement dans le module"
-          >
-            <span className="reader-progress__fill" style={{ width: `${pct}%` }} />
-          </div>
+          <ModuleProgressBar activeStep={active} total={total} />
 
           <button
             type="button"
@@ -127,9 +114,11 @@ export function ReaderShell({
 
       <div className="reader__main">{children}</div>
 
-      <aside className="reader__aside" aria-label="Assistant pédagogique">
-        {aside}
-      </aside>
+      {aside ? (
+        <aside className="reader__aside" aria-label="Assistant pédagogique">
+          {aside}
+        </aside>
+      ) : null}
     </div>
   );
 }

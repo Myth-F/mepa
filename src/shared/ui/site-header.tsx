@@ -36,7 +36,7 @@ export function SiteHeader({
   const navItems: NavItem[] = staff
     ? [...PUBLIC_NAV_ITEMS, { label: "Espace équipe", href: "/admin" }]
     : learner
-      ? [...PUBLIC_NAV_ITEMS, { label: "Mon espace", href: "/account" }]
+      ? [...PUBLIC_NAV_ITEMS, { label: "Mon espace", href: "/account/dashboard" }]
       : PUBLIC_NAV_ITEMS;
 
   return (
@@ -62,7 +62,7 @@ export function SiteHeader({
               </>
             ) : learner ? (
               <>
-                <Link className="quick-link" href="/account">
+                <Link className="quick-link" href="/account/dashboard">
                   {learner.displayName}
                 </Link>
                 <form action="/account/sign-out" method="post">

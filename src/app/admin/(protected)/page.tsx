@@ -34,6 +34,18 @@ export default async function AdminHomePage() {
               Ouvrir l’éditeur
             </Link>
           </article>
+          {staff.role === "ADMIN" && (
+            <article className="action-item">
+              <div>
+                <p className="action-item__step">3</p>
+                <h3>Modérer les pseudonymes</h3>
+                <p>Consultez et traitez les signalements envoyés depuis le classement.</p>
+              </div>
+              <Link className="text-link" href={"/admin/username-reports" as Route}>
+                Voir les signalements
+              </Link>
+            </article>
+          )}
           <article className="action-item">
             <div>
               <p className="action-item__step">2</p>

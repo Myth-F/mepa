@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumb } from "@/shared/ui/breadcrumb";
 import { registerLearnerAction } from "../actions";
+import { PasswordField } from "../password-field";
 
 export const metadata: Metadata = { title: "Créer mon espace personnel" };
 
@@ -72,22 +73,13 @@ export default async function LearnerRegisterPage({
             aria-describedby={emailInvalid ? "register-error" : undefined}
           />
         </div>
-        <div className="field">
-          <label htmlFor="password">Mot de passe</label>
-          <p className="field__hint" id="password-hint">
-            Utilisez au moins 12 caractères.
-          </p>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            aria-describedby={passwordInvalid ? "password-hint register-error" : "password-hint"}
-            aria-invalid={passwordInvalid ? true : undefined}
-            required
-          />
-        </div>
+        <PasswordField
+          id="password"
+          autoComplete="new-password"
+          showRules
+          invalid={passwordInvalid}
+          describedBy={passwordInvalid ? "register-error" : undefined}
+        />
         <button className="btn" type="submit">
           Créer mon espace
         </button>

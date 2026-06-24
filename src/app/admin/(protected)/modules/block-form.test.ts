@@ -17,6 +17,8 @@ describe("admin block form parser", () => {
     form.set("block-1-question", "Quelle réponse ?");
     form.set("block-1-options", "Faux\nVrai *");
     form.set("block-1-explanation", "Parce que.");
+    form.set("block-1-source-title", "Source pédagogique");
+    form.set("block-1-source-url", "https://example.org/source");
 
     form.set("block-2-order", "3");
     form.set("block-2-type", "dilemma");
@@ -35,6 +37,10 @@ describe("admin block form parser", () => {
         { key: "b", label: "Vrai", correct: true },
       ],
       explanation: "Parce que.",
+      explanationSource: {
+        title: "Source pédagogique",
+        url: "https://example.org/source",
+      },
     });
   });
 

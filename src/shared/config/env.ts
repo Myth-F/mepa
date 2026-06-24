@@ -9,7 +9,17 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   // Session / cookies
-  SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 7),
+  SESSION_TTL_HOURS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24 * 7),
+
+  // Public application URL and optional transactional-email webhook.
+  APP_URL: z.string().url().default("http://localhost:3000"),
+  EMAIL_WEBHOOK_URL: z.string().url().optional(),
+  EMAIL_WEBHOOK_TOKEN: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(3).default("MEPA <no-reply@example.org>"),
 
   // S3-compatible object storage (MinIO by default).
   S3_ENDPOINT: z.string().url(),

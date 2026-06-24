@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { prisma } from "@/shared/db/prisma";
 import { getCurrentLearner } from "@/shared/auth/learner-session";
 import { getShowcase, getContinueModules, type ShowcaseItem } from "@/modules/discovery/showcase";
-import { FIRST_VISIT_COOKIE } from "@/middleware";
 import type { CourseLevel } from "@/generated/prisma";
 
 const LEVEL_LABELS: Record<CourseLevel, string> = {
@@ -23,12 +22,12 @@ function showcaseMeta(item: ShowcaseItem): string {
 }
 
 export default async function HomePage() {
-  const [cookieStore, learner, showcase] = await Promise.all([
-    cookies(),
+  const [requestHeaders, learner, showcase] = await Promise.all([
+    headers(),
     getCurrentLearner(),
     getShowcase(prisma, 6),
   ]);
-  const firstVisit = !cookieStore.has(FIRST_VISIT_COOKIE);
+  const firstVisit = requestHeaders.get("x-mepa-first-visit") === "1";
   const continueItems = learner ? await getContinueModules(prisma, learner.id, 3) : [];
 
   return (

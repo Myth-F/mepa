@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/shared/config/env";
@@ -48,9 +49,36 @@ export class S3MediaStorage implements MediaStoragePort {
     };
   }
 
-  async createSignedDownload(objectKey: string, expiresInSeconds = DOWNLOAD_TTL_SECONDS): Promise<string> {
+  async createSignedDownload(
+    objectKey: string,
+    expiresInSeconds = DOWNLOAD_TTL_SECONDS,
+  ): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: objectKey });
     return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  async inspectObject(
+    objectKey: string,
+  ): Promise<{ sizeBytes: number; mimeType: string | null } | null> {
+    try {
+      const result = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: objectKey }),
+      );
+      return {
+        sizeBytes: result.ContentLength ?? 0,
+        mimeType: result.ContentType ?? null,
+      };
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "$metadata" in error &&
+        (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404
+      ) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async deleteObject(objectKey: string): Promise<void> {

@@ -10,12 +10,20 @@ import {
   hashSessionToken,
   verifyPassword,
 } from "@/modules/identity/crypto";
+import {
+  displayNameError,
+  isValidPassword,
+  normalizeDisplayName,
+} from "@/modules/identity/validation";
 
 export const LEARNER_SESSION_COOKIE = "mepa_learner_session";
 
 export interface CurrentLearner {
   id: string;
   displayName: string;
+  sessionStartedAt: Date;
+  sessionExpiresAt: Date;
+  sessionAgeMinutes: number;
 }
 
 export async function getCurrentLearner(): Promise<CurrentLearner | null> {
@@ -27,8 +35,18 @@ export async function getCurrentLearner(): Promise<CurrentLearner | null> {
     include: { learner: true },
   });
 
-  if (!session || session.expiresAt <= new Date() || session.learner.deletedAt) return null;
-  return { id: session.learner.id, displayName: session.learner.displayName };
+  const now = new Date();
+  if (!session || session.expiresAt <= now || session.learner.deletedAt) return null;
+  return {
+    id: session.learner.id,
+    displayName: session.learner.displayName,
+    sessionStartedAt: session.createdAt,
+    sessionExpiresAt: session.expiresAt,
+    sessionAgeMinutes: Math.max(
+      0,
+      Math.floor((now.getTime() - session.createdAt.getTime()) / 60_000),
+    ),
+  };
 }
 
 export async function requireLearner(): Promise<CurrentLearner> {
@@ -95,11 +113,19 @@ export async function registerLearner(input: {
   displayName: string;
 }): Promise<"created" | "duplicate" | "invalid"> {
   const email = input.email.trim().toLowerCase();
-  const displayName = input.displayName.trim();
-  if (!email.includes("@") || input.password.length < 12 || displayName.length < 1) {
+  const displayName = normalizeDisplayName(input.displayName);
+  if (!email.includes("@") || !isValidPassword(input.password) || displayNameError(displayName)) {
     return "invalid";
   }
   if (await prisma.learner.findUnique({ where: { email } })) return "duplicate";
+  if (
+    await prisma.learner.findFirst({
+      where: { displayName: { equals: displayName, mode: "insensitive" } },
+      select: { id: true },
+    })
+  ) {
+    return "invalid";
+  }
 
   const learner = await prisma.learner.create({
     data: {

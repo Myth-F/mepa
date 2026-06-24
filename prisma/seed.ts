@@ -241,6 +241,13 @@ const modules: SeedModule[] = [
         ["comment", "Commenter sans vérifier pour donner son avis"],
       ]),
     ],
+    sources: [
+      {
+        label: "CNIL — Hypertrucage (deepfake) : se protéger et signaler",
+        url: "https://www.cnil.fr/fr/hypertrucage-deepfake",
+        citation: "Consulté le 23 juin 2026",
+      },
+    ],
   },
   {
     slug: "recommandations-reseaux-sociaux",
@@ -270,6 +277,13 @@ const modules: SeedModule[] = [
         ],
       ),
     ],
+    sources: [
+      {
+        label: "CNIL/LINC — Des recommandations gourmandes en données personnelles",
+        url: "https://linc.cnil.fr/altgorithmes-1-des-recommandations-toujours-plus-gourmandes-en-donnees-personnelles",
+        citation: "Consulté le 23 juin 2026",
+      },
+    ],
   },
   {
     slug: "ia-travail-recrutement",
@@ -298,6 +312,13 @@ const modules: SeedModule[] = [
         ],
       ),
     ],
+    sources: [
+      {
+        label: "CNIL — IA : comment être en conformité avec le RGPD ?",
+        url: "https://www.cnil.fr/fr/intelligence-artificielle/ia-comment-etre-en-conformite-avec-le-rgpd",
+        citation: "Consulté le 23 juin 2026",
+      },
+    ],
   },
   {
     slug: "empreinte-environnementale-ia",
@@ -314,8 +335,8 @@ const modules: SeedModule[] = [
       ),
       quiz("Quelle pratique va dans le sens d'un usage plus sobre de l'IA ?", [
         ["a", "Choisir le modèle le plus petit qui répond correctement au besoin", true],
-        ["b", "Utiliser systématiquement le modèle le plus lourd", false],
-        ["c", "Multiplier les générations sans objectif clair", false],
+        ["b", "Choisir l'outil le plus connu même s'il est surdimensionné", false],
+        ["c", "Générer de nombreuses variantes avant de préciser le besoin", false],
       ]),
       dilemma(
         "Une équipe veut générer automatiquement des milliers d'images pour choisir une affiche. Quelle alternative proposer ?",
@@ -325,6 +346,13 @@ const modules: SeedModule[] = [
           ["none", "Ignorer la question environnementale"],
         ],
       ),
+    ],
+    sources: [
+      {
+        label: "ADEME — Regards croisés sur l'impact de l'IA générative",
+        url: "https://infos.ademe.fr/magazine-janvier-2025/regards-croises-sur-limpact-de-lia-generative/",
+        citation: "Consulté le 23 juin 2026",
+      },
     ],
   },
   {
@@ -354,6 +382,13 @@ const modules: SeedModule[] = [
         ],
       ),
     ],
+    sources: [
+      {
+        label: "Cybermalveillance.gouv.fr — Hameçonnage (phishing)",
+        url: "https://www.cybermalveillance.gouv.fr/tous-nos-contenus/fiches-reflexes/hameconnage-phishing",
+        citation: "Consulté le 23 juin 2026",
+      },
+    ],
   },
 ];
 
@@ -366,13 +401,19 @@ function quiz(
   options: Array<[key: string, label: string, correct: boolean]>,
   explanation?: string,
 ): DraftBlockInput {
+  const correctLabels = options
+    .filter(([, , correct]) => correct)
+    .map(([, label]) => `« ${label} »`)
+    .join(" et ");
   return {
     type: "quiz",
     schemaVersion: 1,
     payload: {
       question,
       options: options.map(([key, label, correct]) => ({ key, label, correct })),
-      explanation,
+      explanation:
+        explanation ??
+        `La bonne réponse est ${correctLabels}. Elle correspond au principe expliqué dans le module.`,
     },
   };
 }
@@ -420,6 +461,26 @@ async function seedModule(
       where: { slug: input.slug },
       data: { popularity: input.popularity },
     });
+    if (input.sources?.length) {
+      const currentLabels = new Set(
+        (
+          await prisma.moduleSource.findMany({
+            where: { moduleVersionId: existing.id },
+            select: { label: true },
+          })
+        ).map((source) => source.label),
+      );
+      await prisma.moduleSource.createMany({
+        data: input.sources
+          .filter((source) => !currentLabels.has(source.label))
+          .map((source) => ({
+            moduleVersionId: existing.id,
+            label: source.label,
+            url: source.url,
+            citation: source.citation,
+          })),
+      });
+    }
     return existing;
   }
 
@@ -437,7 +498,19 @@ async function seedModule(
     },
   });
   const draft = mod.versions[0]!;
-  const blocks = await service.setDraftBlocks(draft.id, input.blocks);
+  const primarySource = input.sources?.find((source) => source.url);
+  const blocksWithSources = input.blocks.map((block) =>
+    block.type === "quiz" && primarySource
+      ? {
+          ...block,
+          payload: {
+            ...(block.payload as Record<string, unknown>),
+            explanationSource: { title: primarySource.label, url: primarySource.url },
+          },
+        }
+      : block,
+  );
+  const blocks = await service.setDraftBlocks(draft.id, blocksWithSources);
   if (!blocks.ok) throw new Error(`Invalid blocks for ${input.slug}: ${blocks.errors.join("; ")}`);
 
   if (input.sources?.length) {
@@ -635,6 +708,18 @@ async function main() {
   const service = new ModuleService(prisma);
   const seededModules = await Promise.all(
     modules.map((input) => seedModule(service, editor.id, input)),
+  );
+  await Promise.all(
+    seededModules.map((version, index) => {
+      const publishedAt = new Date(Date.UTC(2026, 0, 10 + index));
+      return prisma.$transaction([
+        prisma.moduleVersion.update({ where: { id: version.id }, data: { publishedAt } }),
+        prisma.moduleSearchDocument.updateMany({
+          where: { moduleId: version.moduleId },
+          data: { publishedAt },
+        }),
+      ]);
+    }),
   );
   const modulesBySlug = new Map(seededModules.map((version) => [version.module.slug, version]));
 

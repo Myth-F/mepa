@@ -22,19 +22,37 @@ model Learner {
   id           String    @id @default(cuid())
   email        String    @unique
   passwordHash String
-  displayName  String
+  displayName  String    @unique
   createdAt    DateTime  @default(now())
   // Soft-delete / anonymization marker for account deletion (RGPD).
   deletedAt    DateTime?
 
-  sessions    LearnerSession[]
-  completions ModuleCompletion[]
-  attempts    QuizAttempt[]
-  votes       DilemmaVote[]
-  pointEvents PointEvent[]
-  score       LearnerScore?
+  sessions            LearnerSession[]
+  completions         ModuleCompletion[]
+  attempts            QuizAttempt[]
+  votes               DilemmaVote[]
+  pointEvents         PointEvent[]
+  score               LearnerScore?
+  passwordResetTokens PasswordResetToken[]
+  reportsMade         UsernameReport[]     @relation("UsernameReportReporter")
+  reportsReceived     UsernameReport[]     @relation("UsernameReportSubject")
 
   @@map("learner")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  learnerId String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@index([expiresAt])
+  @@map("password_reset_token")
 }
 
 model LearnerSession {
@@ -69,11 +87,38 @@ model StaffUser {
   active       Boolean   @default(true)
   createdAt    DateTime  @default(now())
 
-  sessions       StaffSession[]
-  createdModules Module[]       @relation("ModuleCreatedBy")
-  uploadedMedia  MediaAsset[]   @relation("MediaUploadedBy")
+  sessions                StaffSession[]
+  createdModules          Module[]         @relation("ModuleCreatedBy")
+  uploadedMedia           MediaAsset[]     @relation("MediaUploadedBy")
+  reviewedUsernameReports UsernameReport[] @relation("UsernameReportReviewer")
 
   @@map("staff_user")
+}
+
+enum UsernameReportStatus {
+  PENDING
+  DISMISSED
+  ACTIONED
+}
+
+model UsernameReport {
+  id                String               @id @default(cuid())
+  reporterLearnerId String
+  subjectLearnerId  String?
+  reportedName      String
+  reason            String
+  status            UsernameReportStatus @default(PENDING)
+  reviewedByStaffId String?
+  reviewedAt        DateTime?
+  createdAt         DateTime             @default(now())
+
+  reporter Learner    @relation("UsernameReportReporter", fields: [reporterLearnerId], references: [id], onDelete: Cascade)
+  subject  Learner?   @relation("UsernameReportSubject", fields: [subjectLearnerId], references: [id], onDelete: SetNull)
+  reviewer StaffUser? @relation("UsernameReportReviewer", fields: [reviewedByStaffId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([subjectLearnerId])
+  @@map("username_report")
 }
 
 model StaffSession {
@@ -222,10 +267,15 @@ model MediaAsset {
   altText           String?
   isDecorative      Boolean  @default(false)
   uploadedByStaffId String?
+  // Pending rows are created before the bytes are sent. Only completed assets
+  // with uploadedAt set may be referenced by published learner content.
+  uploadedAt        DateTime?
+  uploadExpiresAt   DateTime?
   createdAt         DateTime @default(now())
 
   uploadedBy StaffUser? @relation("MediaUploadedBy", fields: [uploadedByStaffId], references: [id], onDelete: SetNull)
 
+  @@index([uploadedAt])
   @@map("media_asset")
 }
 
@@ -329,22 +379,22 @@ model LearnerScore {
 // ---------------------------------------------------------------------------
 
 model ModuleSearchDocument {
-  moduleId         String       @id
-  slug             String       @unique
+  moduleId         String                   @id
+  slug             String                   @unique
   title            String
-  summary          String       @default("")
-  body             String       @default("")
+  summary          String                   @default("")
+  body             String                   @default("")
   categoryId       String?
   categorySlug     String?
   categoryName     String?
   level            CourseLevel?
   estimatedMinutes Int?
-  language         String       @default("fr")
-  tags             String[]     @default([])
-  popularity       Int          @default(0)
+  language         String                   @default("fr")
+  tags             String[]                 @default([])
+  popularity       Int                      @default(0)
   publishedAt      DateTime
   searchVector     Unsupported("tsvector")?
-  updatedAt        DateTime     @updatedAt
+  updatedAt        DateTime                 @updatedAt
 
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 

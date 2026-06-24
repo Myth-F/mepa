@@ -12,11 +12,15 @@ export function BlockView({
   type,
   payload,
   slug,
+  quizResult,
+  selectedAnswers = [],
 }: {
   id: string;
   type: string;
   payload: unknown;
   slug: string;
+  quizResult?: string;
+  selectedAnswers?: string[];
 }) {
   switch (type as BlockType) {
     case "rich_text": {
@@ -34,8 +38,14 @@ export function BlockView({
       const parsed = imagePayloadSchema.safeParse(payload);
       if (!parsed.success) return null;
       return (
-        <figure className="media-placeholder">
-          <p>[Image{parsed.data.decorative ? " décorative" : ` : ${parsed.data.alt}`}]</p>
+        <figure className="module-media">
+          {/* Dimensions are unknown for uploaded authoring media; the browser
+              preserves intrinsic dimensions while CSS constrains the width. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/media/${encodeURIComponent(parsed.data.mediaId)}`}
+            alt={parsed.data.decorative ? "" : parsed.data.alt}
+          />
           {parsed.data.caption && <figcaption>{parsed.data.caption}</figcaption>}
         </figure>
       );
@@ -43,6 +53,7 @@ export function BlockView({
     case "quiz": {
       const parsed = quizPayloadSchema.safeParse(payload);
       if (!parsed.success) return null;
+      const showResult = quizResult === "quiz-passed" || quizResult === "quiz-failed";
       return (
         <form action={submitQuizAction}>
           <input type="hidden" name="blockId" value={id} />
@@ -53,14 +64,42 @@ export function BlockView({
               Sélectionnez la ou les réponses qui vous semblent justes.
             </p>
             {parsed.data.options.map((option) => (
-              <label className="choice" key={option.key}>
-                <input type="checkbox" name="answer" value={option.key} />
-                <span>{option.label}</span>
+              <label
+                className={`choice${showResult && option.correct ? " choice--correct" : ""}${showResult && selectedAnswers.includes(option.key) && !option.correct ? " choice--incorrect" : ""}`}
+                key={option.key}
+              >
+                <input
+                  type="checkbox"
+                  name="answer"
+                  value={option.key}
+                  defaultChecked={selectedAnswers.includes(option.key)}
+                  disabled={showResult}
+                />
+                <span>
+                  {option.label}
+                  {showResult && option.correct && (
+                    <strong className="choice__result">Bonne réponse</strong>
+                  )}
+                </span>
               </label>
             ))}
-            <button className="btn btn--secondary" type="submit">
-              Vérifier ma réponse
+            <button className="btn btn--secondary" type="submit" disabled={showResult}>
+              {showResult ? "Réponse vérifiée" : "Vérifier ma réponse"}
             </button>
+            {showResult && parsed.data.explanation && (
+              <div className="quiz-explanation" role="status" aria-live="polite">
+                <h3>Pourquoi ?</h3>
+                <p>{parsed.data.explanation}</p>
+                {parsed.data.explanationSource && (
+                  <p>
+                    <a href={parsed.data.explanationSource.url} target="_blank" rel="noreferrer">
+                      Consulter la source : {parsed.data.explanationSource.title}
+                      <span className="sr-only"> (nouvel onglet)</span>
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
           </fieldset>
         </form>
       );

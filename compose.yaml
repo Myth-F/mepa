@@ -111,6 +111,10 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-mepa}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-mepa}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      APP_URL: ${APP_URL}
+      EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL}
+      EMAIL_WEBHOOK_TOKEN: ${EMAIL_WEBHOOK_TOKEN}
+      EMAIL_FROM: ${EMAIL_FROM:-MEPA <no-reply@example.org>}
       S3_ENDPOINT: http://minio:9000
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-mepa-media}
