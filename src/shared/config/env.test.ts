@@ -24,6 +24,16 @@ describe("environment parsing", () => {
     expect(parsed.EMAIL_WEBHOOK_TOKEN).toBeUndefined();
   });
 
+  it("normalizes the protocol-relative URL injected by Coolify during builds", () => {
+    const parsed = parseEnv({
+      ...REQUIRED,
+      APP_URL: "",
+      COOLIFY_URL: "//mepa.example.org",
+    });
+
+    expect(parsed.APP_URL).toBe("https://mepa.example.org");
+  });
+
   it("keeps rejecting a non-empty malformed URL", () => {
     expect(() => parseEnv({ ...REQUIRED, APP_URL: "not-a-url" })).toThrow("APP_URL");
   });

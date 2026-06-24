@@ -4,6 +4,16 @@ function emptyStringAsUndefined(value: unknown): unknown {
   return typeof value === "string" && value.trim() === "" ? undefined : value;
 }
 
+function normalizePublicUrl(value: unknown): unknown {
+  const normalized = emptyStringAsUndefined(value);
+
+  if (typeof normalized === "string" && normalized.startsWith("//")) {
+    return `https:${normalized}`;
+  }
+
+  return normalized;
+}
+
 // Centralized, validated environment access. Server-only — never import from a
 // "use client" module. Secrets always come from the environment, never the repo.
 const envSchema = z
@@ -23,8 +33,8 @@ const envSchema = z
     // Coolify injects empty strings for optional Compose variables. Normalize
     // those to "unset" and use its canonical public URL as the production
     // fallback when APP_URL was not explicitly configured.
-    APP_URL: z.preprocess(emptyStringAsUndefined, z.string().url().optional()),
-    COOLIFY_URL: z.preprocess(emptyStringAsUndefined, z.string().url().optional()),
+    APP_URL: z.preprocess(normalizePublicUrl, z.string().url().optional()),
+    COOLIFY_URL: z.preprocess(normalizePublicUrl, z.string().url().optional()),
     EMAIL_WEBHOOK_URL: z.preprocess(emptyStringAsUndefined, z.string().url().optional()),
     EMAIL_WEBHOOK_TOKEN: z.preprocess(emptyStringAsUndefined, z.string().min(1).optional()),
     EMAIL_FROM: z.string().min(3).default("MEPA <no-reply@example.org>"),
