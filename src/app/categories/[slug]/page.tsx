@@ -29,7 +29,7 @@ export async function generateMetadata({
   return {
     title: category.name,
     description:
-      category.description ?? `Modules pédagogiques MEPA consacrés au thème ${category.name}.`,
+      category.description ?? `Modules pédagogiques Iavenir consacrés au thème ${category.name}.`,
     alternates: { canonical: `/categories/${category.slug}` },
   };
 }

@@ -12,7 +12,7 @@ export async function GET() {
     {
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "content-disposition": 'attachment; filename="progression-mepa.json"',
+        "content-disposition": 'attachment; filename="progression-iavenir.json"',
       },
     },
   );

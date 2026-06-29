@@ -98,9 +98,9 @@ function escapeHtml(value: string): string {
 export function passwordResetEmail(resetUrl: string) {
   const safeUrl = escapeHtml(resetUrl);
   return {
-    subject: "Réinitialiser votre mot de passe MEPA",
-    text: `Vous avez demandé un nouveau mot de passe MEPA. Ouvrez ce lien valable 15 minutes : ${resetUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.`,
-    html: `<p>Vous avez demandé un nouveau mot de passe MEPA.</p><p><a href="${safeUrl}">Choisir un nouveau mot de passe</a></p><p>Ce lien est valable 15 minutes et ne peut être utilisé qu'une fois.</p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>`,
+    subject: "Réinitialiser votre mot de passe Iavenir",
+    text: `Vous avez demandé un nouveau mot de passe Iavenir. Ouvrez ce lien valable 15 minutes : ${resetUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.`,
+    html: `<p>Vous avez demandé un nouveau mot de passe Iavenir.</p><p><a href="${safeUrl}">Choisir un nouveau mot de passe</a></p><p>Ce lien est valable 15 minutes et ne peut être utilisé qu'une fois.</p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>`,
   };
 }
 

@@ -11,7 +11,7 @@ export function SiteFooter({
   return (
     <footer role="contentinfo" className="footer">
       <div className="container footer__body">
-        <p className="footer__service">MEPA</p>
+        <p className="footer__service">Iavenir</p>
         <p className="footer__desc">
           Plateforme pédagogique ouverte pour comprendre l’éthique de l’intelligence artificielle.
         </p>

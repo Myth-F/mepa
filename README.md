@@ -1,4 +1,4 @@
-# MEPA — plateforme pédagogique sur l'éthique de l'IA
+# Iavenir — plateforme pédagogique sur l'éthique de l'IA
 
 Monolithe modulaire Next.js (App Router, TypeScript) avec identités apprenant/équipe
 séparées, modules composés de blocs typés et versionnés, stockage média S3, frontière

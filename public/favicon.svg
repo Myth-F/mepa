@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MEPA">
-  <rect width="64" height="64" rx="8" fill="#000091"/>
-  <path d="M14 45V19h7l11 14 11-14h7v26h-8V31L32 44 22 31v14z" fill="#f5f5fe"/>
-  <circle cx="50" cy="14" r="5" fill="#e3e3fd"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Iavenir">
+  <rect width="64" height="64" rx="8" fill="#062c30"/>
+  <path d="M20 18h24v7h-8v21h8v7H20v-7h8V25h-8z" fill="#f8fbf8"/>
+  <path d="M44 14c-8 1-15 6-18 13 8-1 15-6 18-13z" fill="#9fdc5c"/>
+  <circle cx="46" cy="45" r="5" fill="#35c2b2"/>
 </svg>

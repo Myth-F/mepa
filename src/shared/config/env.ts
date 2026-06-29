@@ -37,7 +37,7 @@ const envSchema = z
     COOLIFY_URL: z.preprocess(normalizePublicUrl, z.string().url().optional()),
     EMAIL_WEBHOOK_URL: z.preprocess(emptyStringAsUndefined, z.string().url().optional()),
     EMAIL_WEBHOOK_TOKEN: z.preprocess(emptyStringAsUndefined, z.string().min(1).optional()),
-    EMAIL_FROM: z.string().min(3).default("MEPA <no-reply@example.org>"),
+    EMAIL_FROM: z.string().min(3).default("Iavenir <no-reply@example.org>"),
 
     // S3-compatible object storage (MinIO by default).
     S3_ENDPOINT: z.string().url(),

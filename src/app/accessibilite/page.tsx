@@ -4,7 +4,7 @@ import { Breadcrumb } from "@/shared/ui/breadcrumb";
 
 export const metadata: Metadata = {
   title: "Déclaration d’accessibilité",
-  description: "État d’accessibilité de MEPA, périmètre audité et moyen de signaler un problème.",
+  description: "État d’accessibilité d’Iavenir, périmètre audité et moyen de signaler un problème.",
   robots: { index: true, follow: true },
 };
 
@@ -16,7 +16,7 @@ export default function AccessibilityStatementPage() {
         <p className="eyebrow">Engagement d’inclusion</p>
         <h1>Déclaration d’accessibilité</h1>
         <p>
-          MEPA s’engage à rendre ses contenus utilisables par toutes et tous, quels que soient
+          Iavenir s’engage à rendre ses contenus utilisables par toutes et tous, quels que soient
           l’âge, l’équipement ou les technologies d’assistance employées.
         </p>
       </header>
@@ -42,7 +42,7 @@ export default function AccessibilityStatementPage() {
       <section id="conformite" aria-labelledby="conformite-heading">
         <h2 id="conformite-heading">État de conformité</h2>
         <p className="statement-status">
-          <strong>MEPA est partiellement conforme au RGAA 4.1.2.</strong>
+          <strong>Iavenir est partiellement conforme au RGAA 4.1.2.</strong>
         </p>
         <p>
           Le pré-audit de conception réalisé le <time dateTime="2026-06-10">10 juin 2026</time>

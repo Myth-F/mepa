@@ -9,14 +9,15 @@ import { env } from "@/shared/config/env";
 export const metadata: Metadata = {
   metadataBase: new URL(env.APP_URL),
   title: {
-    default: "MEPA — Éthique & pédagogie de l'IA",
-    template: "%s — MEPA",
+    default: "Iavenir — Éthique & pédagogie de l'IA",
+    template: "%s — Iavenir",
   },
   description:
     "Plateforme pédagogique ouverte sur l'éthique de l'intelligence artificielle. Service indépendant, non officiel.",
   alternates: { canonical: "/" },
   icons: {
     icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
     ],

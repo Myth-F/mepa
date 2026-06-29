@@ -45,7 +45,7 @@ export function SiteHeader({
         <div className="header__body">
           <Link className="header__brand" href="/">
             <span>
-              <span className="header__service-title">MEPA</span>
+              <span className="header__service-title">Iavenir</span>
               <span className="header__service-tagline">Comprendre l’IA et ses enjeux</span>
             </span>
           </Link>

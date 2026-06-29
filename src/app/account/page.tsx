@@ -92,7 +92,7 @@ export default async function AccountPage({
       <section className="data-controls" aria-labelledby="data-controls-heading">
         <h2 id="data-controls-heading">Mes données de progression</h2>
         <p>
-          MEPA conserve les modules commencés ou terminés, vos réponses aux quiz, vos choix
+          Iavenir conserve les modules commencés ou terminés, vos réponses aux quiz, vos choix
           pédagogiques et les points associés. Votre adresse e-mail n’est jamais affichée
           publiquement.
         </p>
