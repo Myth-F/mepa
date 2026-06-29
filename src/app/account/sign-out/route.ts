@@ -1,7 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
 import { deleteLearnerSession } from "@/shared/auth/learner-session";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   await deleteLearnerSession();
-  return NextResponse.redirect(new URL("/", request.url), 303);
+  return new Response(null, { status: 303, headers: { Location: "/" } });
 }
