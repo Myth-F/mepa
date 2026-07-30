@@ -1,188 +1,178 @@
-# Iavenir — plateforme pédagogique sur l'éthique de l'IA
+<div align="center">
+  <img src="public/favicon.svg" alt="Iavenir logo" width="96" />
+  <h1>Iavenir</h1>
+  <p><strong>An educational platform for understanding the ethical challenges of artificial intelligence.</strong></p>
 
-Monolithe modulaire Next.js (App Router, TypeScript) avec identités apprenant/équipe
-séparées, modules composés de blocs typés et versionnés, stockage média S3, frontière
-IA neutre (désactivée par défaut) et déploiement Docker Compose sur un seul VPS.
+  <p>
+    <a href="https://github.com/Myth-F/mepa"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Myth--F%2Fmepa-181717?logo=github" /></a>
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs" />
+    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
+    <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" />
+    <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" />
+  </p>
 
-Ce service est **indépendant** : il s'inspire des principes d'ergonomie et
-d'accessibilité DSFR/RGAA sans utiliser les identités graphiques réservées de l'État
-ni se présenter comme un service officiel.
+  <p>
+    <a href="#quick-start">Quick start</a>
+    ·
+    <a href="#architecture">Architecture</a>
+    ·
+    <a href="#quality">Quality</a>
+    ·
+    <a href="docs/gamification.md">Gamification</a>
+  </p>
+</div>
+
+---
+
+## About
+
+Iavenir is a web application for learning about AI ethics. It provides versioned educational modules, quizzes, progress tracking, and optional gamification. A separate staff area supports platform administration.
+
+The project draws inspiration from DSFR and RGAA usability and accessibility principles. It does not use restricted French government branding and is not presented as an official public service.
+
+## Features
+
+- educational modules built from typed content blocks;
+- immutable, versioned publication workflow;
+- separate learner and staff identities;
+- quizzes, progress tracking, points, levels, and an opt-in leaderboard;
+- S3-compatible media storage through MinIO;
+- health and readiness probes for production operations;
+- built-in PostgreSQL and MinIO backups;
+- provider-neutral boundary for a future AI tutor, disabled by default.
+
+## Tech stack
+
+| Area | Technologies |
+| --- | --- |
+| Application | Next.js 16, React 19, TypeScript |
+| Data | PostgreSQL, Prisma |
+| Media | S3 / MinIO |
+| Validation and security | Zod, Argon2id |
+| Testing | Vitest, Playwright, axe-core |
+| Deployment | Docker Compose, Coolify |
+
+## Quick start
+
+### Requirements
+
+- Node.js 22 or newer;
+- Docker and Docker Compose;
+- npm.
+
+### Installation
+
+```bash
+git clone https://github.com/Myth-F/mepa.git
+cd mepa
+cp .env.example .env
+docker compose -f docker-compose.dev.yaml up -d
+npm install
+npx prisma migrate dev
+npm run db:seed
+npm run dev
+```
+
+The application is available at [http://localhost:3000](http://localhost:3000).
+
+The demo seed is safe to run multiple times. It creates categories, published modules, sources, learner accounts, and progress data.
+
+### Demo accounts
+
+| Area | Email | Password |
+| --- | --- | --- |
+| Staff | `editor@example.org` | `change-me-please` |
+| Learner | `camille.apprenante@example.org` | `change-me-please` |
+| Learner | `nour.apprenante@example.org` | `change-me-please` |
+| Learner | `leo.apprenant@example.org` | `change-me-please` |
+
+The staff sign-in page is available at `/admin/sign-in`. These credentials are for local development only.
 
 ## Architecture
 
-```
+```text
 src/
-  app/                     Next.js App Router (pages, /api/health, /api/ready)
-  modules/
-    identity/              crypto partagée (Argon2id, jetons de session)
-    authoring/             domaine modules + registre de blocs typés
-      blocks/              schémas Zod, registre, projections texte
-      module-service.ts    brouillon transactionnel + publication immuable
-    learning/              scoring quiz, progression
-    media/                 MediaStoragePort + adaptateur S3/MinIO
-    ai-boundary/           contrats neutres tuteur + constructeur de contexte
-  shared/
-    config/env.ts          validation d'environnement (Zod)
-    db/prisma.ts           client Prisma singleton (adapter-pg)
-prisma/schema.prisma       schéma PostgreSQL complet
+├── app/                 # Next.js pages and API routes
+├── modules/
+│   ├── identity/        # Identities, sessions, and cryptography
+│   ├── authoring/       # Modules, blocks, and publication
+│   ├── learning/        # Quizzes, scores, and progress
+│   ├── media/           # Storage port and S3 adapter
+│   └── ai-boundary/     # Provider-neutral tutor contracts
+└── shared/
+    ├── config/          # Environment validation
+    ├── db/              # Prisma client
+    └── ui/              # Shared UI components
+
+prisma/                  # Schema, migrations, and seed
+scripts/                 # Administration and maintenance
+tests/                   # Shared test setup
+docs/                    # Extended documentation
 ```
 
-**Règles de frontière** (vérifiées par `npm run arch:check`) : le code de domaine
-n'importe jamais Next.js, et les fichiers de domaine pur n'importent jamais le client
-Prisma concret (il est injecté).
+Architecture boundaries are enforced by `npm run arch:check`: domain code does not import Next.js, and pure domain files do not depend directly on the concrete Prisma client.
 
-## Développement local
+## Configuration
+
+Copy `.env.example` to `.env`, then configure:
+
+- `DATABASE_URL` for PostgreSQL;
+- `APP_URL` and session settings;
+- `EMAIL_WEBHOOK_*` for transactional email;
+- `S3_*` for object storage.
+
+Never commit `.env` or real credentials. The tutor remains disabled with `TUTOR_ENABLED=false`.
+
+## Quality
 
 ```bash
-cp .env.example .env            # renseigner les valeurs locales
-docker compose -f docker-compose.dev.yaml up -d   # PostgreSQL + MinIO + bucket
-npm install
-npx prisma migrate dev          # crée la base et applique les migrations
-npm run db:seed                 # jeu de démonstration publié
-npm run dev                     # http://localhost:3000
+npm run arch:check     # Check architecture boundaries
+npm run lint           # Run static analysis
+npm run typecheck      # Check TypeScript types
+npm test               # Run Vitest
+npm run test:e2e       # Run Playwright; the app must be running
+npm run build          # Create a production build
 ```
 
-La seed crée un jeu de démonstration relançable : catégories, modules publiés,
-sources, comptes apprenants, progression et classement.
+## Administration
 
-Comptes de test :
-
-- Équipe : `editor@example.org` / `change-me-please`
-- Apprenants : `camille.apprenante@example.org`, `nour.apprenante@example.org`,
-  `leo.apprenant@example.org` / `change-me-please`
-
-Pour créer ou réinitialiser un compte équipe de test :
+Create or reset a staff account:
 
 ```bash
-npm run staff:upsert -- --email editor@example.org --name "Éditeur" --password 'change-me-please' --role EDITOR
+npm run staff:upsert -- \
+  --email editor@example.org \
+  --name "Editor" \
+  --password 'change-me-please' \
+  --role EDITOR
 ```
 
-L’espace équipe n’est jamais annoncé dans l’interface publique. Les membres de
-l’équipe se connectent directement sur `http://localhost:3000/admin/sign-in`; après
-authentification, le lien « Espace équipe » apparaît dans leur navigation.
-Un compte équipe actif peut aussi se connecter à l’espace personnel public depuis
-`/account/sign-in` avec les mêmes identifiants, afin de tester le parcours comme
-une personne apprenante. Cela crée ou réutilise une identité apprenante séparée
-pour la progression.
-
-L’espace équipe actuel authentifie les éditeurs, mais le constructeur visuel de
-modules n’est pas encore disponible dans l’interface. Pour ajouter rapidement des
-cours de test aujourd’hui, modifier [`prisma/seed.ts`](prisma/seed.ts) ou créer un
-script qui utilise `ModuleService`.
-
-Qualité :
-
-```bash
-npm run arch:check   # frontières d'architecture
-npm run lint
-npm run typecheck
-npm test             # tests unitaires + intégration (Vitest)
-npm run test:e2e     # Playwright (app démarrée requise)
-npm run build        # build de production (sortie standalone)
-```
-
-## Déploiement production avec Coolify
-
-La stack [`compose.yaml`](compose.yaml) est conçue pour une ressource **Docker
-Compose** Coolify. Coolify construit les images, crée le domaine public HTTPS grâce
-à `SERVICE_FQDN_APP_3000`, conserve les volumes nommés et démarre l'application
-uniquement après une migration Prisma réussie.
-
-### Configuration Coolify
-
-1. Créer une ressource **Docker Compose** depuis ce dépôt et sélectionner
-   `compose.yaml`.
-2. Coolify génère et conserve automatiquement `SERVICE_PASSWORD_POSTGRES`,
-   `SERVICE_USER_MINIO` et `SERVICE_PASSWORD_MINIO`.
-3. Dans **Domains for app**, renseigner le domaine public, par exemple
-   `https://mepa.ipv6-sigl.fr`. Laisser les domaines des autres services vides.
-4. Déployer. Le service `migrate` doit terminer avec le code 0 avant le démarrage
-   de `app`.
-5. Pour remplir un déploiement de tests utilisateurs, lancer ensuite la seed
-   depuis un shell sur le VPS avec l'environnement de la stack :
-
-   ```bash
-   docker compose run --rm migrate npm run db:seed
-   ```
-
-   La seed est relançable et ne doit pas être automatisée comme dépendance de
-   démarrage de `app`, afin d'éviter de bloquer le proxy public si elle échoue.
-
-PostgreSQL et MinIO ne publient aucun port. Le proxy Coolify accède uniquement à
-l'application sur son port conteneur `3000`; TLS est géré par Coolify.
-
-### Vérification
-
-```bash
-curl -fsS https://votre-domaine.example/api/health
-# {"status":"ok"}
-
-curl -fsS https://votre-domaine.example/api/ready
-# {"status":"ready","db":"up"}
-```
-
-`/api/health` est une sonde de vie du process et ne touche pas PostgreSQL, afin
-d'éviter les boucles de redémarrage quand une dépendance est temporairement lente.
-`/api/ready` vérifie explicitement la connectivité base de données.
-Voir aussi l'[audit réseau et déploiement Coolify](docs/architecture/audit-reseau-deploiement-coolify.md).
-
-Si `migrate` échoue, Coolify ne démarre pas `app`. Corriger la migration
-(rétrocompatible, expand-and-contract), puis relancer le déploiement.
-
-### Rollback
-
-- Conserver le tag d'image précédent et une sauvegarde de base récente.
-- Migration rétrocompatible → redéployer l'image précédente (`APP_TAG=...`).
-- Migration non rétrocompatible → restaurer la base et le stockage objet
-  correspondants **avant** de démarrer l'image précédente.
-
-## Sauvegardes et restauration
-
-Le service `backup` réalise périodiquement :
-
-- un dump logique PostgreSQL (`pg_dump | gzip`) dans le volume `backup_data` ;
-- un miroir du bucket MinIO ;
-- une purge selon `BACKUP_RETENTION_DAYS`.
-
-> Les sauvegardes locales ne suffisent pas. **Copier régulièrement `/backups` hors
-> du VPS** (rsync/objet distant) et réaliser un exercice de restauration.
-
-### Exercice de restauration (restore drill)
-
-```bash
-# Base
-gunzip -c backups/postgres/db-<ts>.sql.gz | \
-  docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-
-# Médias
-docker compose run --rm --entrypoint sh minio-init -c \
-  "mc alias set bk http://minio:9000 $S3_ACCESS_KEY_ID $S3_SECRET_ACCESS_KEY && \
-   mc mirror --overwrite /backups/minio/$S3_BUCKET bk/$S3_BUCKET"
-```
-
-Vérifier ensuite que comptes, modules, progression et médias sont présents.
-
-## Persistance et réseau
-
-- Volumes nommés : `postgres_data`, `minio_data`, `backup_data` — indépendants des
-  conteneurs ; recréer les conteneurs ne perd aucune donnée.
-- Réseau `backend` `internal: true` : PostgreSQL et MinIO ne sont pas joignables
-  publiquement ; seule l'application est exposée au proxy Coolify.
-
-## Frontière IA (future)
-
-Aucun SDK fournisseur n'est installé et `TUTOR_ENABLED=false` par défaut : aucune UI
-ni requête tuteur n'existe dans le build par défaut. Les contrats neutres
-(`TutorProvider`, `ModuleContextBuilder`) et un constructeur de contexte limité au
-contenu **publié** sont prêts pour une intégration ultérieure, après revue de sécurité.
-
-## Gamification
-
-Les points, niveaux et le classement pseudonyme facultatif sont documentés dans
-[`docs/gamification.md`](docs/gamification.md). Pour vérifier ou reconstruire les
-agrégats de scores :
+Rebuild derived data:
 
 ```bash
 npm run gamification:recompute
-npm run gamification:recompute -- --backfill  # reprise historique explicite
+npm run search:recompute
 ```
+
+Points, levels, and leaderboard behavior are documented in [`docs/gamification.md`](docs/gamification.md).
+
+## Deployment
+
+[`compose.yaml`](compose.yaml) is designed for a Coolify Docker Compose resource. It orchestrates:
+
+- PostgreSQL and MinIO on an internal network;
+- Prisma migrations before application startup;
+- the Next.js application on port `3000`;
+- scheduled database and media backups.
+
+After deployment, verify both probes:
+
+```bash
+curl -fsS https://your-domain.example/api/health
+curl -fsS https://your-domain.example/api/ready
+```
+
+Backups stored in `backup_data` should be copied off the VPS regularly and tested through restore drills.
+
+## Project status
+
+The learner experience, publishing workflow, progress tracking, and operational foundations are implemented. The visual module builder and any future AI tutor integration remain planned improvements.
